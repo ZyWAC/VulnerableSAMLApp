@@ -484,7 +484,8 @@ def adminAddUser():
         requests.post('http://idp/api/update_group', json={
             'username': newUser['username'],
             'group': new_member_of,
-            'action': 'set'
+            'action': 'set',
+            'source': 'admin'
         }, timeout=5)
     except Exception as e:
         logger.warning(f'Failed to sync new user group with IDP for {newUser["username"]}: {e}')
@@ -563,7 +564,8 @@ def adminEditUser(username):
         requests.post('http://idp/api/update_group', json={
             'username': username,
             'group': new_member_of,
-            'action': 'set'
+            'action': 'set',
+            'source': 'admin'
         }, timeout=5)
     except Exception as e:
         logger.warning(f'Failed to sync group change with IDP for {username}: {e}')
@@ -594,7 +596,8 @@ def adminDeleteUser(username):
     try:
         requests.post('http://idp/api/update_group', json={
             'username': username,
-            'action': 'remove'
+            'action': 'remove',
+            'source': 'admin'
         }, timeout=5)
     except Exception as e:
         logger.warning(f'Failed to sync user deletion with IDP for {username}: {e}')
@@ -615,7 +618,8 @@ def adminRestoreUsers():
     try:
         requests.post('http://idp/api/update_group', json={
             'username': '__clear_all__',
-            'action': 'clear_all'
+            'action': 'clear_all',
+            'source': 'admin'
         }, timeout=5)
     except Exception as e:
         logger.warning(f'Failed to clear IDP group overrides on restore: {e}')

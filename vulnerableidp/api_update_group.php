@@ -39,6 +39,7 @@ if (!$input) {
 $username = trim($input['username'] ?? '');
 $group = trim($input['group'] ?? '');
 $action = trim($input['action'] ?? 'set');
+$source = trim($input['source'] ?? 'staff');
 
 if (empty($username)) {
     http_response_code(400);
@@ -46,20 +47,23 @@ if (empty($username)) {
     exit;
 }
 
-// Protected users that cannot be overridden via this API
-$protectedUsers = ['admin', 'instructor'];
-if (in_array(strtolower($username), array_map('strtolower', $protectedUsers))) {
-    http_response_code(403);
-    echo json_encode(['error' => 'Cannot modify protected user groups']);
-    exit;
-}
+// Admin-sourced requests bypass protected user/group restrictions
+if ($source !== 'admin') {
+    // Protected users that cannot be overridden via staff panel
+    $protectedUsers = ['admin', 'instructor'];
+    if (in_array(strtolower($username), array_map('strtolower', $protectedUsers))) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Cannot modify protected user groups']);
+        exit;
+    }
 
-// Protected groups that cannot be assigned via this API
-$protectedGroups = ['administrators', 'PlatformConfiguration'];
-if ($action === 'set' && in_array($group, $protectedGroups)) {
-    http_response_code(403);
-    echo json_encode(['error' => 'Cannot assign protected group via API']);
-    exit;
+    // Protected groups that cannot be assigned via staff panel
+    $protectedGroups = ['administrators', 'PlatformConfiguration'];
+    if ($action === 'set' && in_array($group, $protectedGroups)) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Cannot assign protected group via API']);
+        exit;
+    }
 }
 
 // Load existing overrides
