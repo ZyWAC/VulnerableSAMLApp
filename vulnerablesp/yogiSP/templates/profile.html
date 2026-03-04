@@ -4,59 +4,58 @@
 
 {% if paint_logout %}
   {% if attributes %}
-    <p>Profile:</p>
-    <table class="table table-striped">
-      <thead>
-        <th>Name</th><th>Values</th>
-      </thead>
-      <tbody>
-        {% for attr in attributes %}
-          {% if attr.0 == 'username' %}
-            <tr><td>Username:</td>
-            <td><ul class="list-unstyled">
-              {% for val in attr.1 %}
-                <li>{{ val }}</li>
-              {% endfor %}
-            </ul></td></tr>
-          {% endif %}
-          {% if attr.0 == 'memberOf' %}
-          <tr><td>Group Membership:</td>
-          <td><ul class="list-unstyled">
-            {% for val in attr.1 %}
-              <li>{{ val }}</li>
+    <div class="page-header">
+      <div class="icon" style="background: var(--accent-light); color: var(--accent);">
+        <i class="bi bi-person-badge"></i>
+      </div>
+      <h3>Your Profile</h3>
+    </div>
+
+    <div class="card">
+      <div class="card-body p-0">
+        <table class="table mb-0">
+          <thead>
+            <tr><th style="width: 200px;">Attribute</th><th>Value</th></tr>
+          </thead>
+          <tbody>
+            {% for attr in attributes %}
+              {% if attr.0 == 'username' %}
+                <tr><td><i class="bi bi-person me-2 text-muted"></i>Username</td>
+                <td>{% for val in attr.1 %}<strong>{{ val }}</strong>{% endfor %}</td></tr>
+              {% endif %}
+              {% if attr.0 == 'memberOf' %}
+                <tr><td><i class="bi bi-people me-2 text-muted"></i>Group Membership</td>
+                <td>{% for val in attr.1 %}
+                  {% if val == 'PlatformConfiguration' %}
+                    <span class="badge-role badge-instructor">{{ val }}</span>
+                  {% elif val == 'administrators' %}
+                    <span class="badge-role badge-admin">{{ val }}</span>
+                  {% else %}
+                    <span class="badge-role badge-user">{{ val }}</span>
+                  {% endif %}
+                {% endfor %}</td></tr>
+              {% endif %}
+              {% if attr.0 == 'firstName' %}
+                <tr><td><i class="bi bi-type me-2 text-muted"></i>First Name</td>
+                <td>{% for val in attr.1 %}{{ val }}{% endfor %}</td></tr>
+              {% endif %}
+              {% if attr.0 == 'lastName' %}
+                <tr><td><i class="bi bi-type me-2 text-muted"></i>Last Name</td>
+                <td>{% for val in attr.1 %}{{ val }}{% endfor %}</td></tr>
+              {% endif %}
+              {% if attr.0 == 'emailAddress' %}
+                <tr><td><i class="bi bi-envelope me-2 text-muted"></i>Email Address</td>
+                <td>{% for val in attr.1 %}{{ val }}{% endfor %}</td></tr>
+              {% endif %}
             {% endfor %}
-          </ul></td></tr>
-          {% endif %}
-          {% if attr.0 == 'firstName' %}
-          <tr><td>First Name:</td>
-          <td><ul class="list-unstyled">
-            {% for val in attr.1 %}
-              <li>{{ val }}</li>
-            {% endfor %}
-          </ul></td></tr>
-          {% endif %}
-          {% if attr.0 == 'lastName' %}
-          <tr><td>Last Name:</td>
-          <td><ul class="list-unstyled">
-            {% for val in attr.1 %}
-              <li>{{ val }}</li>
-            {% endfor %}
-          </ul></td></tr>
-          {% endif %}
-          {% if attr.0 == 'emailAddress' %}
-          <tr><td>Email Address:</td>
-          <td><ul class="list-unstyled">
-            {% for val in attr.1 %}
-              <li>{{ val }}</li>
-            {% endfor %}
-          </ul></td></tr>
-          {% endif %}
-        {% endfor %}
-      </tbody>
-    </table>
+          </tbody>
+        </table>
+      </div>
+    </div>
   {% else %}
-    <div class="alert alert-danger" role="alert">You don't have any attributes</div>
+    <div class="alert alert-danger d-flex align-items-center gap-2" role="alert">
+      <i class="bi bi-exclamation-triangle"></i> You don't have any attributes
+    </div>
   {% endif %}
 {% endif %}
 {% endblock %}
-

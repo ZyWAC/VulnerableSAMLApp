@@ -29,7 +29,7 @@
     "firstName": "Barney",
     "lastName": "Rubble",
     "emailAddress": "barney.rubble@bedrock.com",
-    "memberOf": "administratorsbutnot"
+    "memberOf": "users"
   },
   {
     "username": "instructor",

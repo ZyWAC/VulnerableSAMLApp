@@ -1,83 +1,93 @@
 {% extends "base.html" %}
 
 {% block content %}
+<div class="page-header">
+  <div class="icon" style="background: var(--success-light); color: var(--success);">
+    <i class="bi bi-book-fill"></i>
+  </div>
+  <h3>Learn About SAML</h3>
+</div>
+<p class="text-muted mb-4">This application is designed to demonstrate pitfalls when configuring applications to use SAML. While SAML can be vulnerable when misconfigured, there is nothing inherently wrong with it when implemented properly.</p>
 
-<p>This application is designed to help show some of the pitfalls that can come when configuring applicaitons to use SAML.</p>
-<p>Please note that while the application is designed to show serveral of the things that can be done wrong to make an application vulnerable. There is nothing inheriently wrong with utilizing it if implemented properly.</p>
-<table class="table table-striped">
-        <thead>
-                <th>Terms</th><th></th>
-            </thead>
-            <tbody>
-                <tr><td>Identity Provider (IDP)</td>
-                <td><ul class="list-unstyled">
-                <li>This is the server that handles the authentication. In the current environment the IDP is the 'Jellystone IDP.' This is who you prove you are who you say you are to. An IDP may have back end connections to AD, or it could check against another database of users. IDPs can also help to easily implment mutli-factor authentication. Removing the burden from the application developer.</li>            	
-                </ul></td></tr>
-    
-                <tr><td>Service Provider (SP)</td>
-                <td><ul class="list-unstyled">
-                <li>This is the application a user is trying to access. In the case of the application the SP is the 'Yogi's SAML App'.</li>            	
-                </ul></td></tr>
-                <tr><td>Client</td>
-                    <td><ul class="list-unstyled">
-                    <li>This is you. A client is anyone or anything that is sending a request to the SP. </li>            	
-                    </ul></td></tr>
-            </tbody>
-        </table>
+<div class="card mb-4">
+  <div class="card-header d-flex align-items-center gap-2 px-4 py-3">
+    <i class="bi bi-mortarboard"></i> Key Terminology
+  </div>
+  <div class="card-body p-0">
+    <table class="table mb-0">
+      <thead>
+        <tr><th class="px-4">Term</th><th>Description</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="px-4"><strong style="color: var(--accent);">Identity Provider (IDP)</strong></td>
+          <td>The server that handles authentication. In this environment, the IDP is the "Jellystone IDP." This is who you prove your identity to. An IDP may connect to AD or another user database, and can help easily implement multi-factor authentication.</td>
+        </tr>
+        <tr>
+          <td class="px-4"><strong style="color: var(--accent);">Service Provider (SP)</strong></td>
+          <td>The application a user is trying to access. In this case, the SP is "Yogi's SAML App."</td>
+        </tr>
+        <tr>
+          <td class="px-4"><strong style="color: var(--accent);">Client</strong></td>
+          <td>That's you. A client is anyone or anything sending a request to the SP.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
 
-<h2>Authentication Flows</h2>
-<center><img src="/static/images/environment.png" style="width:60%;height:60%;"></center>
-
-<p>The most important thing is to make sure that a service provider (web app, etc.) is checking to make sure that the messages from the Identity Provider(IDP) are signed, and valid.</p>
-<p>If the messages are not signed, or are signed but not valid the application should reject them.
-    <ul>
+<div class="card mb-4">
+  <div class="card-header d-flex align-items-center gap-2 px-4 py-3">
+    <i class="bi bi-diagram-3"></i> Authentication Flows
+  </div>
+  <div class="card-body text-center px-4">
+    <img src="/static/images/environment.png" class="img-fluid mb-3" style="max-width: 600px; border-radius: 0.75rem;">
+    <div class="text-start" style="max-width: 700px; margin: 0 auto;">
+      <p class="text-muted">The most important thing is ensuring that a service provider checks that messages from the Identity Provider are <strong style="color: var(--text-primary);">signed and valid</strong>.</p>
+      <p class="text-muted mb-2">If messages are not signed, or are signed but not validated, the application should reject them. An attacker could:</p>
+      <ul class="text-muted">
         <li>Remove the signature and edit attributes</li>
         <li>Leave the signature and edit attributes</li>
-        <li>Edit the attributes and resign it with my own signature</li>
-    </ul>
-    Each of those actions should result in a login failure being generated.
-</p>
-<h1>Helpful References:</h1>
-    <table class="table table-striped">
-        <thead>
-            <th>Description</th><th>Page</th>
-        </thead>
-        <tbody>            
-            <tr>
-                <td>Walkthrough of this app (Work in Progress)</td>
-                <td>
-                    <ul class="list-unstyled">
-                        <li>https://jellyparks.com/web-things/vulnerable-saml-app.html</li>            	
-                    </ul>
-                </td>
-            </tr>
-            <tr>
-                <td>Genearl SAML overview</td>
-                <td>
-                    <ul class="list-unstyled">
-                        <li>https://jellyparks.com/web-things/saml-overview.html</li>            	
-                    </ul>
-                </td>
-            </tr>
-            <tr><td>RFC for SAML 2.0</td>
-            <td><ul class="list-unstyled">
-            <li>https://tools.ietf.org/html/rfc6595</li>            	
-            </ul></td></tr>
+        <li>Edit the attributes and re-sign with their own key</li>
+      </ul>
+      <p class="text-muted mb-0">Each of those actions should result in a login failure.</p>
+    </div>
+  </div>
+</div>
 
-            <tr><td>Common SAML Implementation Issues</td>
-            <td><ul class="list-unstyled">
-            <li>https://research.aurainfosec.io/bypassing-saml20-SSO/</li>            	
-            </ul></td></tr>
-            <tr><td>XML Comment SAML Vulnerability</td>
-                <td><ul class="list-unstyled">
-                <li>https://duo.com/blog/duo-finds-saml-vulnerabilities-affecting-multiple-implementations</li>            	
-                </ul></td></tr>
-
-                
-
-
-        </tbody>
-    </table>	
-<br />
+<div class="card">
+  <div class="card-header d-flex align-items-center gap-2 px-4 py-3">
+    <i class="bi bi-link-45deg"></i> Helpful References
+  </div>
+  <div class="card-body p-0">
+    <table class="table mb-0">
+      <thead>
+        <tr><th class="px-4">Description</th><th>Link</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="px-4">Walkthrough of this app (WIP)</td>
+          <td><a href="https://jellyparks.com/web-things/vulnerable-saml-app.html" target="_blank">jellyparks.com <i class="bi bi-box-arrow-up-right ms-1" style="font-size: 0.75rem;"></i></a></td>
+        </tr>
+        <tr>
+          <td class="px-4">General SAML Overview</td>
+          <td><a href="https://jellyparks.com/web-things/saml-overview.html" target="_blank">jellyparks.com <i class="bi bi-box-arrow-up-right ms-1" style="font-size: 0.75rem;"></i></a></td>
+        </tr>
+        <tr>
+          <td class="px-4">RFC for SAML 2.0</td>
+          <td><a href="https://tools.ietf.org/html/rfc6595" target="_blank">tools.ietf.org <i class="bi bi-box-arrow-up-right ms-1" style="font-size: 0.75rem;"></i></a></td>
+        </tr>
+        <tr>
+          <td class="px-4">Common SAML Implementation Issues</td>
+          <td><a href="https://research.aurainfosec.io/bypassing-saml20-SSO/" target="_blank">research.aurainfosec.io <i class="bi bi-box-arrow-up-right ms-1" style="font-size: 0.75rem;"></i></a></td>
+        </tr>
+        <tr>
+          <td class="px-4">XML Comment SAML Vulnerability</td>
+          <td><a href="https://duo.com/blog/duo-finds-saml-vulnerabilities-affecting-multiple-implementations" target="_blank">duo.com <i class="bi bi-box-arrow-up-right ms-1" style="font-size: 0.75rem;"></i></a></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
 
 {% endblock %}

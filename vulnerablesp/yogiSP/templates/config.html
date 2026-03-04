@@ -1,15 +1,36 @@
 {% extends "base.html" %}
 
 {% block content %}
-<p>Here you can configure the applications security preferences and the IDP information.</p>
-<h2>Application Security Preferences:</h2>
+<div class="page-header">
+  <div class="icon" style="background: var(--accent-light); color: var(--accent);">
+    <i class="bi bi-sliders"></i>
+  </div>
+  <h3>Configuration</h3>
+</div>
+<p class="text-muted mb-4">Configure the application's security preferences and IDP information.</p>
 
-<h2>IDP Intity Information</h2>
-<form>
-    <label>SSO URL:</label> <input id="text" name="ssoURL" size="80"/><br />
-    <label>SLO URL:</label> <input id="text" name="sloURL" size="80"/><br />
-    <label>Cert:</label> <input id="text" name="cert" size="80"/><br />
-</form>
-
+<div class="card mb-4">
+  <div class="card-header d-flex align-items-center gap-2 px-4 py-3">
+    <i class="bi bi-building"></i> IDP Entity Information
+  </div>
+  <div class="card-body px-4">
+    <form>
+      <div class="row g-3" style="max-width: 700px;">
+        <div class="col-12">
+          <label class="form-label text-muted">SSO URL</label>
+          <input type="text" class="form-control" name="ssoURL" />
+        </div>
+        <div class="col-12">
+          <label class="form-label text-muted">SLO URL</label>
+          <input type="text" class="form-control" name="sloURL" />
+        </div>
+        <div class="col-12">
+          <label class="form-label text-muted">Certificate</label>
+          <input type="text" class="form-control" name="cert" />
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
 
 {% endblock %}

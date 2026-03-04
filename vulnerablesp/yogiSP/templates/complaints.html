@@ -1,47 +1,99 @@
 {% extends "base.html" %}
 
 {% block content %}
-<p>Current Listings of Yogi Bears mis-behavings.</p>
-<p>If you see something incorrect please let an administrator know and they can delete these.</p>
-<p>Note for Jellystone staff: Only a member of the 'administrators' group is able to delete records.</p>
+<div class="page-header">
+  <div class="icon" style="background: var(--warning-light); color: var(--warning);">
+    <i class="bi bi-exclamation-triangle-fill"></i>
+  </div>
+  <div>
+    <h3>Complaints</h3>
+    <p class="text-muted mb-0" style="font-size: 0.875rem;">Current listings of Yogi Bear's misbehavings</p>
+  </div>
+</div>
 
-    <table class="table table-striped">
-      <thead>
-        <th>ID</th><th>Complaint</th><th>Severity</th><th>Victim</th>
-      </thead>
-        <tbody>
-            {% for dict_item in dictionary %}
-            <tr>
-                <td>{{ dict_item['id'] }}</td>
-                <td>{{ dict_item['description'] }}</td>
-                <td>{{ dict_item['severity'] }}</td>
-                <td>{{ dict_item['complainer'] }}</td>
-                {% if attributes %}
-                    {% for attr in attributes %}
-                        {% if attr.0 == 'memberOf' %}
-                            {% for val in attr.1 %}
-                                {% if val == 'administrators' %}
-                                    <td><a href="/deletecomplaint?id={{ dict_item['id'] }}" class="btn btn-default">Delete</a></td>
-                                {% endif %}
-                            {% endfor %}
-                        {% endif %}
-                    {% endfor %}
-                {% endif %} 
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-<a href="/filecomplaint" class="btn btn-default">File A New Complaint</a>
-{% if attributes %}
-    {% for attr in attributes %}
-        {% if attr.0 == 'memberOf' %}
-            {% for val in attr.1 %}
-                {% if val == 'PlatformConfiguration' %}
-                    <a href="/restorecomplaints" class="btn btn-default">Restore Complaints</a>
+<div class="alert alert-info mb-4">
+  <i class="bi bi-info-circle me-2"></i>
+  If you see something incorrect please let an administrator know. Only members of the <strong>administrators</strong> group can delete records.
+</div>
+
+<div class="card mb-4">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead>
+          <tr>
+            <th class="px-4">ID</th>
+            <th>Complaint</th>
+            <th>Severity</th>
+            <th>Victim</th>
+            {% if attributes %}
+              {% for attr in attributes %}
+                {% if attr.0 == 'memberOf' %}
+                  {% for val in attr.1 %}
+                    {% if val == 'administrators' %}
+                      <th class="text-end pe-4">Action</th>
+                    {% endif %}
+                  {% endfor %}
                 {% endif %}
-            {% endfor %}
-        {% endif %}
+              {% endfor %}
+            {% endif %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for dict_item in dictionary %}
+          <tr>
+            <td class="px-4"><code>{{ dict_item['id'] }}</code></td>
+            <td>{{ dict_item['description'] }}</td>
+            <td>
+              {% if dict_item['severity']|lower in ['high', 'critical'] %}
+                <span class="badge-role badge-instructor">{{ dict_item['severity'] }}</span>
+              {% elif dict_item['severity']|lower == 'medium' %}
+                <span class="badge-role badge-admin">{{ dict_item['severity'] }}</span>
+              {% else %}
+                <span class="badge-role badge-user">{{ dict_item['severity'] }}</span>
+              {% endif %}
+            </td>
+            <td>{{ dict_item['complainer'] }}</td>
+            {% if attributes %}
+              {% for attr in attributes %}
+                {% if attr.0 == 'memberOf' %}
+                  {% for val in attr.1 %}
+                    {% if val == 'administrators' %}
+                      <td class="text-end pe-4">
+                        <a href="/deletecomplaint?id={{ dict_item['id'] }}" class="btn btn-sm btn-danger"
+                           onclick="return confirm('Delete this complaint?')">
+                          <i class="bi bi-trash me-1"></i>Delete
+                        </a>
+                      </td>
+                    {% endif %}
+                  {% endfor %}
+                {% endif %}
+              {% endfor %}
+            {% endif %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="d-flex gap-2">
+  <a href="/filecomplaint" class="btn btn-accent"><i class="bi bi-pencil-square me-2"></i>File A New Complaint</a>
+  {% if attributes %}
+    {% for attr in attributes %}
+      {% if attr.0 == 'memberOf' %}
+        {% for val in attr.1 %}
+          {% if val == 'PlatformConfiguration' %}
+            <a href="/restorecomplaints" class="btn btn-warning"
+               onclick="return confirm('Restore all complaints to defaults?')">
+              <i class="bi bi-arrow-counterclockwise me-2"></i>Restore Complaints
+            </a>
+          {% endif %}
+        {% endfor %}
+      {% endif %}
     {% endfor %}
-{% endif %} 	 
-    
+  {% endif %}
+</div>
+
 {% endblock %}

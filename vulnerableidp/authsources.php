@@ -120,7 +120,7 @@ $config = array(
             'username' => array('rsmith'),
         ),
         'brubble:password' => array(
-            'memberOf' => array('administratorsbutnot'),
+            'memberOf' => array('users'),
             'emailAddress' => array('barney.rubble@bedrock.com'),
             'firstName' => array('Barney'),
             'lastName' => array('Rubble'),

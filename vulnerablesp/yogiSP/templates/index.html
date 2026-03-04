@@ -4,35 +4,45 @@
 
 {% if errors %}
   <div class="alert alert-danger" role="alert">
-    <strong>Errors:</strong>
-    <ul class="list-unstyled">
-        {% for err in errors %}
-          <li>{{err}}</li>
-        {% endfor %}
-    </ul>
+    <div class="d-flex align-items-start gap-2">
+      <i class="bi bi-exclamation-octagon-fill fs-5"></i>
+      <div>
+        <strong>Authentication Error</strong>
+        <ul class="list-unstyled mb-0 mt-1">
+          {% for err in errors %}
+            <li>{{ err }}</li>
+          {% endfor %}
+        </ul>
+        {% if error_detail %}
+          <hr class="my-2">
+          <p class="mb-0"><strong>Detail:</strong> {{ error_detail }}</p>
+        {% endif %}
+      </div>
+    </div>
   </div>
 {% endif %}
 
 {% if not_auth_warn %}
-  <div class="alert alert-danger" role="alert">Not authenticated</div>
+  <div class="alert alert-danger d-flex align-items-center gap-2" role="alert">
+    <i class="bi bi-shield-x"></i> Not authenticated
+  </div>
 {% endif %}
 {% if success_slo %}
-  <div class="alert alert-success" role="alert">Successfully logged out</div>
+  <div class="alert alert-success d-flex align-items-center gap-2" role="alert">
+    <i class="bi bi-check-circle"></i> Successfully logged out
+  </div>
 {% endif %}
 
-<center>
-	<h3>Has this bear stolen your lunch, picnic basket, or other consumable goods?</h3>
-	<img src="/static/images/yogi-stealing.png" style="width:40%;height:40%;">
-</center>
-
-<p>If he has please file a complaint. The staff at Jellystone utlize these metrics to track unwanted behavior. Unfortunatly, if it continues we will be forced to relocate Yogi to a new home.</p>
-<p>It is vital that these metrics are accurate. PLEASE report any misbehavings that you witness or are a victim of. You can report an issue on the complaints tab above.</p>
-
-
-
-
-
-
+<div class="card mt-3">
+  <div class="card-body text-center py-5">
+    <h3 class="mb-4" style="font-weight: 700;">Has this bear stolen your lunch, picnic basket, or other consumable goods?</h3>
+    <img src="/static/images/yogi-stealing.png" class="img-fluid mb-4" style="max-width: 350px; border-radius: 1rem;">
+    <div class="mx-auto" style="max-width: 700px;">
+      <p class="text-muted">If he has please file a complaint. The staff at Jellystone utilize these metrics to track unwanted behavior. Unfortunately, if it continues we will be forced to relocate Yogi to a new home.</p>
+      <p class="text-muted">It is vital that these metrics are accurate. <strong style="color: var(--text-primary);">PLEASE</strong> report any misbehavings that you witness or are a victim of.</p>
+      <a href="/filecomplaint" class="btn btn-accent mt-2"><i class="bi bi-pencil-square me-2"></i>File a Complaint</a>
+    </div>
+  </div>
+</div>
 
 {% endblock %}
-

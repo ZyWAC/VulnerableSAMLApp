@@ -30,9 +30,64 @@ from jsonparse import jsonUserUpdate
 from jsonparse import jsonUserDelete
 from jsonparse import jsonUserGet
 
+import logging
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+
 app = Flask(__name__, static_url_path='/static')
 app.config['SECRET_KEY'] = 'onelogindemopytoolkit'
 app.config['SAML_PATH'] = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'saml')
+
+
+def get_valid_groups():
+    """Read valid group names from users.json to validate SAML memberOf attributes."""
+    try:
+        users = jsonUsersReader()
+        groups = set(u.get('memberOf', '') for u in users if u.get('memberOf'))
+        return groups
+    except Exception as e:
+        logger.error(f'Failed to read valid groups: {e}')
+        # Fallback to known default groups
+        return {'users', 'administrators', 'PlatformConfiguration'}
+
+
+def validate_saml_attributes(attributes):
+    """Validate SAML response attributes against application settings.
+    
+    Returns (is_valid: bool, error_message: str or None)
+    """
+    if not attributes:
+        return False, 'No attributes found in SAML response'
+    
+    # Check if memberOf attribute exists
+    member_of = attributes.get('memberOf', [])
+    if not member_of:
+        logger.warning('SAML response missing memberOf attribute')
+        return False, 'SAML response is missing required memberOf attribute'
+    
+    # Validate memberOf value against known valid groups
+    valid_groups = get_valid_groups()
+    group_value = member_of[0] if member_of else None
+    
+    if group_value and group_value not in valid_groups:
+        logger.warning(
+            f'Invalid group membership in SAML response: "{group_value}". '
+            f'Valid groups are: {valid_groups}'
+        )
+        return False, (
+            f'Invalid group membership: "{group_value}". '
+            f'This group does not exist in the application. '
+            f'Valid groups: {", ".join(sorted(valid_groups))}'
+        )
+    
+    # Check required attributes
+    required_attrs = ['username']
+    for attr_name in required_attrs:
+        if attr_name not in attributes or not attributes[attr_name]:
+            logger.warning(f'SAML response missing required attribute: {attr_name}')
+            return False, f'SAML response is missing required attribute: {attr_name}'
+    
+    return True, None
 
 
 def init_saml_auth(req):
@@ -84,8 +139,32 @@ def index():
         auth.process_response()
         errors = auth.get_errors()
         not_auth_warn = not auth.is_authenticated()
+        
+        if len(errors) > 0:
+            logger.error(f'SAML Response errors: {errors}')
+            logger.error(f'Error reason: {auth.get_last_error_reason()}')
+        
         if len(errors) == 0:
-            session['samlUserdata'] = auth.get_attributes()
+            saml_attributes = auth.get_attributes()
+            logger.info(f'SAML attributes received: {saml_attributes}')
+            
+            # Validate SAML attributes (group membership, required fields)
+            attrs_valid, validation_error = validate_saml_attributes(saml_attributes)
+            
+            if not attrs_valid:
+                logger.warning(f'SAML attribute validation failed: {validation_error}')
+                errors.append('invalid_attributes')
+                return render_template(
+                    'index.html',
+                    errors=['invalid_attributes'],
+                    error_detail=validation_error,
+                    not_auth_warn=True,
+                    success_slo=False,
+                    attributes=False,
+                    paint_logout=False
+                )
+            
+            session['samlUserdata'] = saml_attributes
             session['samlNameId'] = auth.get_nameid()
             session['samlSessionIndex'] = auth.get_session_index()
             self_url = OneLogin_Saml2_Utils.get_self_url(req)
@@ -109,6 +188,7 @@ def index():
     return render_template(
         'index.html',
         errors=errors,
+        error_detail=auth.get_last_error_reason() if errors else None,
         not_auth_warn=not_auth_warn,
         success_slo=success_slo,
         attributes=attributes,
@@ -184,9 +264,10 @@ def update():
                         signMetadata = 'signMetadata' in request.form
                         validMessage = 'validMessage' in request.form
                         validAssertion = 'validAssertion' in request.form
-                        cve201711427 = 'cve-2017-11427' in request.form 
+                        cve201711427 = 'cve-2017-11427' in request.form
+                        adminPanelEnabled = 'adminPanelEnabled' in request.form
         
-                        jsonEditor(wantMessagesSigned,wantAssertionsSigned,signMetadata,validMessage,validAssertion,cve201711427)
+                        jsonEditor(wantMessagesSigned,wantAssertionsSigned,signMetadata,validMessage,validAssertion,cve201711427,adminPanelEnabled)
 
                         return redirect('/settings/')
     return redirect('/')
@@ -279,6 +360,15 @@ def get_user_role():
     return None
 
 
+def is_admin_panel_enabled():
+    """Check if the admin panel is enabled (instruction mode) via settings."""
+    try:
+        settings = jsonReader()
+        return settings.get('adminPanelEnabled', 'False') == 'True'
+    except Exception:
+        return False
+
+
 def can_manage_user(role, target_user):
     """Check if the current role can manage the target user.
     instructor: can manage everyone
@@ -305,6 +395,16 @@ def adminPanel():
         if len(session['samlUserdata']) > 0:
             attributes = session['samlUserdata'].items()
 
+    # Check if instruction mode (admin panel) is enabled
+    admin_enabled = is_admin_panel_enabled()
+
+    # If admin panel is NOT enabled and user is 'admin' (not instructor),
+    # show restricted view
+    if role == 'admin' and not admin_enabled:
+        return render_template('admin.html', paint_logout=paint_logout,
+                               attributes=attributes, users=[], role=role,
+                               admin_restricted=True)
+
     users = jsonUsersReader()
     # Filter: admin cannot see/manage instructor (PlatformConfiguration) users
     if role == 'admin':
@@ -313,7 +413,8 @@ def adminPanel():
         visible_users = users
 
     return render_template('admin.html', paint_logout=paint_logout,
-                           attributes=attributes, users=visible_users, role=role)
+                           attributes=attributes, users=visible_users, role=role,
+                           admin_restricted=False)
 
 
 @app.route('/admin/add', methods=['POST'])
@@ -321,6 +422,10 @@ def adminAddUser():
     role = get_user_role()
     if role not in ('instructor', 'admin'):
         return redirect('/')
+
+    # Block admin users when instruction mode is off
+    if role == 'admin' and not is_admin_panel_enabled():
+        return redirect('/admin/')
 
     new_member_of = request.form.get('memberOf', 'users')
     # admin cannot create PlatformConfiguration users
@@ -352,6 +457,10 @@ def adminEditUserPage(username):
     if role not in ('instructor', 'admin'):
         return redirect('/')
 
+    # Block admin users when instruction mode is off
+    if role == 'admin' and not is_admin_panel_enabled():
+        return redirect('/admin/')
+
     user = jsonUserGet(username)
     if not user:
         return redirect('/admin/')
@@ -374,6 +483,10 @@ def adminEditUser(username):
     role = get_user_role()
     if role not in ('instructor', 'admin'):
         return redirect('/')
+
+    # Block admin users when instruction mode is off
+    if role == 'admin' and not is_admin_panel_enabled():
+        return redirect('/admin/')
 
     user = jsonUserGet(username)
     if not user:
@@ -408,6 +521,10 @@ def adminDeleteUser(username):
     role = get_user_role()
     if role not in ('instructor', 'admin'):
         return redirect('/')
+
+    # Block admin users when instruction mode is off
+    if role == 'admin' and not is_admin_panel_enabled():
+        return redirect('/admin/')
 
     user = jsonUserGet(username)
     if not user:

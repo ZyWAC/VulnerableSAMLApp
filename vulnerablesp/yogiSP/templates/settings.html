@@ -1,49 +1,78 @@
 {% extends "base.html" %}
 
 {% block content %}
-<p>Here you can adjust the security settings for this application.</p>
-<!--
-<form action="/update" method="post"></form>
-<table class="table table-striped">
-    <thead>
-      <th>Setting</th><th>Value</th>
-    </thead>
-    <tbody>
-      <tr><td>Want messages signed?</td><td><input type="checkbox" id="checkbox" name=wantMessagesSigned {% if currentSettings['wantMessagesSigned']=='True' %}checked{% else %}{% endif %}/></td></tr>
-      <tr><td>Want message signatures validated?</td><td><input type="checkbox" id="checkbox" name=validMessage {% if currentSettings['validMessage']=='True' %}checked{% else %}{% endif %}/></td></tr>
-      <tr><td>Want assertions signed?</td><td><input type="checkbox" id="checkbox" name=wantAssertionsSigned {% if currentSettings['wantAssertionsSigned']=='True' %}checked{% else %}{% endif %}/></td></tr>
-      <tr><td>Want assertions signatures validated?</td><td><input type="checkbox" id="checkbox" name=validAssertion {% if currentSettings['validAssertion']=='True' %}checked{% else %}{% endif %}/></td></tr>
-      <tr><td>Vulnerable to CVE-2017-11427?</td><td><input type="checkbox" id="checkbox" name=cve-2017-11427 {% if currentSettings['cve-2017-11427']=='True' %}checked{% else %}{% endif %}/></td></tr>  
-    </tbody>
-  </table>
-  <input type="submit" value="Apply Changes"></input>
-</form>
--->
+<div class="page-header">
+  <div class="icon" style="background: var(--accent-light); color: var(--accent);">
+    <i class="bi bi-gear-fill"></i>
+  </div>
+  <h3>SAML Security Settings</h3>
+</div>
+<p class="text-muted mb-4">Adjust the security settings for SAML authentication processing.</p>
 
 <form action="/update" method="post">
-  <table class="table table-striped">
-    <thead>
-      <th>Setting</th><th>Values</th>
-    </thead>
-	<tbody>
-	{% if currentSettings %}
-		{% for key, value in currentSettings.items() %}
-		<tr><td>{{ key }}</td>
-		<td><ul class="list-unstyled">
-        
-        <li><input type="checkbox" id="checkbox" name={{ key }} {% if value=='True' %}checked{% else %}{% endif %}/></li>            	
-          </ul></td></tr>
-        	{% endfor %}
-	{% endif %}
-      </tbody>
-    </table>	 
-    <input type="submit" value="Apply Changes"></input>
+  <div class="card mb-4">
+    <div class="card-header d-flex align-items-center gap-2 px-4 py-3">
+      <i class="bi bi-shield-lock"></i> Security Configuration
+    </div>
+    <div class="card-body p-0">
+      <table class="table mb-0">
+        <thead>
+          <tr>
+            <th class="px-4">Setting</th>
+            <th style="width: 100px;" class="text-center">Enabled</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if currentSettings %}
+            {% for key, value in currentSettings.items() %}
+              <tr>
+                <td class="px-4">
+                  <div class="d-flex align-items-center gap-2">
+                    {% if key == 'adminPanelEnabled' %}
+                      <i class="bi bi-unlock text-muted"></i>
+                      <div>
+                        <strong style="color: var(--warning);">{{ key }}</strong>
+                        <div class="text-muted" style="font-size: 0.8rem;">
+                          <i class="bi bi-info-circle me-1"></i>Instruction Mode: When enabled, admin users can access the full admin panel. When disabled, admin users only see a welcome message.
+                        </div>
+                      </div>
+                    {% elif key == 'cve-2017-11427' %}
+                      <i class="bi bi-bug text-muted"></i>
+                      <div>
+                        <strong>{{ key }}</strong>
+                        <div class="text-muted" style="font-size: 0.8rem;">XML comment injection vulnerability</div>
+                      </div>
+                    {% else %}
+                      <i class="bi bi-check2-square text-muted"></i>
+                      <strong>{{ key }}</strong>
+                    {% endif %}
+                  </div>
+                </td>
+                <td class="text-center">
+                  <div class="form-check form-switch d-flex justify-content-center">
+                    <input class="form-check-input" type="checkbox" role="switch" name="{{ key }}" {% if value == 'True' %}checked{% endif %} />
+                  </div>
+                </td>
+              </tr>
+            {% endfor %}
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <button type="submit" class="btn btn-accent"><i class="bi bi-check-lg me-2"></i>Apply Changes</button>
 </form>
 
-<hr />
-<p>*Note CVE-2017-11427 applies to the particular library used for this application (the onelogin python library). Other CVEs exist for this vulnerability.</p>
-<p>**When the CVE-2017-11427 checkbox is enabled, the application is <strong>vulnerable</strong> to XML comment injection in NameID and attribute values. When disabled, the patch is applied.</p>
-
-
+<hr class="my-4" />
+<div class="card">
+  <div class="card-body px-4">
+    <h6 class="mb-3" style="font-weight: 600;"><i class="bi bi-info-circle me-2"></i>Notes</h6>
+    <ul class="text-muted mb-0" style="font-size: 0.875rem;">
+      <li><strong>CVE-2017-11427</strong> applies to the particular library used for this application (the OneLogin Python library). Other CVEs exist for this vulnerability.</li>
+      <li>When the <strong>CVE-2017-11427</strong> checkbox is enabled, the application is <strong style="color: var(--danger);">vulnerable</strong> to XML comment injection in NameID and attribute values. When disabled, the patch is applied.</li>
+      <li><strong>adminPanelEnabled</strong> (Instruction Mode) controls whether admin-role users can access the user management panel. Instructors always have full access regardless of this setting.</li>
+    </ul>
+  </div>
+</div>
 
 {% endblock %}

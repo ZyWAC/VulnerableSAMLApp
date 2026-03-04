@@ -1,56 +1,63 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h3>Edit User: {{ user.username }}</h3>
-<p><a href="/admin/">&laquo; Back to Admin Panel</a></p>
+<div class="page-header">
+  <div class="icon" style="background: var(--accent-light); color: var(--accent);">
+    <i class="bi bi-pencil-square"></i>
+  </div>
+  <div>
+    <h3>Edit User: {{ user.username }}</h3>
+  </div>
+</div>
 
-<form action="/admin/edit/{{ user.username }}" method="post">
-  <table class="table table-bordered" style="max-width: 600px;">
-    <tr>
-      <td><label>Username</label></td>
-      <td>
-        <input type="text" class="form-control" value="{{ user.username }}" disabled />
-        <small class="text-muted">Username cannot be changed.</small>
-      </td>
-    </tr>
-    <tr>
-      <td><label for="password">Password</label></td>
-      <td>
-        <input type="text" class="form-control" id="password" name="password" placeholder="Leave blank to keep current" />
-        <small class="text-muted">Current: <code>{{ user.password }}</code></small>
-      </td>
-    </tr>
-    <tr>
-      <td><label for="firstName">First Name</label></td>
-      <td><input type="text" class="form-control" id="firstName" name="firstName" value="{{ user.firstName }}" required /></td>
-    </tr>
-    <tr>
-      <td><label for="lastName">Last Name</label></td>
-      <td><input type="text" class="form-control" id="lastName" name="lastName" value="{{ user.lastName }}" required /></td>
-    </tr>
-    <tr>
-      <td><label for="emailAddress">Email</label></td>
-      <td><input type="email" class="form-control" id="emailAddress" name="emailAddress" value="{{ user.emailAddress }}" required /></td>
-    </tr>
-    <tr>
-      <td><label for="memberOf">Group (memberOf)</label></td>
-      <td>
-        <select class="form-control" id="memberOf" name="memberOf">
-          <option value="users" {% if user.memberOf == 'users' %}selected{% endif %}>users</option>
-          <option value="administrators" {% if user.memberOf == 'administrators' %}selected{% endif %}>administrators</option>
-          <option value="administratorsbutnot" {% if user.memberOf == 'administratorsbutnot' %}selected{% endif %}>administratorsbutnot</option>
-          {% if role == 'instructor' %}
-          <option value="PlatformConfiguration" {% if user.memberOf == 'PlatformConfiguration' %}selected{% endif %}>PlatformConfiguration</option>
+<a href="/admin/" class="btn btn-sm btn-outline-accent mb-4"><i class="bi bi-arrow-left me-1"></i>Back to Admin Panel</a>
+
+<div class="card">
+  <div class="card-body px-4 py-4">
+    <form action="/admin/edit/{{ user.username }}" method="post">
+      <div class="row g-3" style="max-width: 700px;">
+        <div class="col-12">
+          <label class="form-label text-muted">Username</label>
+          <input type="text" class="form-control" value="{{ user.username }}" disabled />
+          <small class="text-muted">Username cannot be changed.</small>
+        </div>
+        <div class="col-12">
+          <label for="password" class="form-label text-muted">Password</label>
+          <input type="text" class="form-control" id="password" name="password" placeholder="Leave blank to keep current" />
+          <small class="text-muted">Current: <code>{{ user.password }}</code></small>
+        </div>
+        <div class="col-md-6">
+          <label for="firstName" class="form-label text-muted">First Name</label>
+          <input type="text" class="form-control" id="firstName" name="firstName" value="{{ user.firstName }}" required />
+        </div>
+        <div class="col-md-6">
+          <label for="lastName" class="form-label text-muted">Last Name</label>
+          <input type="text" class="form-control" id="lastName" name="lastName" value="{{ user.lastName }}" required />
+        </div>
+        <div class="col-md-6">
+          <label for="emailAddress" class="form-label text-muted">Email</label>
+          <input type="email" class="form-control" id="emailAddress" name="emailAddress" value="{{ user.emailAddress }}" required />
+        </div>
+        <div class="col-md-6">
+          <label for="memberOf" class="form-label text-muted">Group (memberOf)</label>
+          <select class="form-select" id="memberOf" name="memberOf">
+            <option value="users" {% if user.memberOf == 'users' %}selected{% endif %}>users</option>
+            <option value="administrators" {% if user.memberOf == 'administrators' %}selected{% endif %}>administrators</option>
+            {% if role == 'instructor' %}
+            <option value="PlatformConfiguration" {% if user.memberOf == 'PlatformConfiguration' %}selected{% endif %}>PlatformConfiguration</option>
+            {% endif %}
+          </select>
+          {% if role == 'admin' and user.memberOf == 'PlatformConfiguration' %}
+            <small class="text-muted" style="color: var(--danger) !important;">You cannot change the group of an Instructor user.</small>
           {% endif %}
-        </select>
-        {% if role == 'admin' and user.memberOf == 'PlatformConfiguration' %}
-          <small class="text-danger">You cannot change the group of an Instructor user.</small>
-        {% endif %}
-      </td>
-    </tr>
-  </table>
-  <button type="submit" class="btn btn-primary">Save Changes</button>
-  <a href="/admin/" class="btn btn-default">Cancel</a>
-</form>
+        </div>
+        <div class="col-12 mt-4 d-flex gap-2">
+          <button type="submit" class="btn btn-accent"><i class="bi bi-check-lg me-1"></i>Save Changes</button>
+          <a href="/admin/" class="btn btn-outline-accent">Cancel</a>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
 
 {% endblock %}
