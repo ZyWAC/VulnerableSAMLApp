@@ -6,3 +6,4 @@ lxml>=4.9.0
 Werkzeug>=2.3.0
 Jinja2>=3.1.0
 MarkupSafe>=2.1.0
+requests>=2.28.0

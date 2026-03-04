@@ -55,7 +55,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         // Also check static users in authsources — load the config
-        $staticUsernames = ['yogi', 'admin', 'rsmith', 'brubble', 'instructor'];
+        $staticUsernames = ['yogi', 'admin', 'cindy', 'instructor'];
 
         // Check for duplicate username
         $duplicate = in_array(strtolower($username), array_map('strtolower', $staticUsernames));

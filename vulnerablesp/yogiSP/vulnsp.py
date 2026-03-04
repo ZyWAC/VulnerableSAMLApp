@@ -30,7 +30,14 @@ from jsonparse import jsonUserUpdate
 from jsonparse import jsonUserDelete
 from jsonparse import jsonUserGet
 
+## Import functions for the staff panel / group management
+from jsonparse import jsonGroupsReader
+from jsonparse import jsonGroupAdd
+from jsonparse import jsonGroupDelete
+from jsonparse import jsonGroupGetPermission
+
 import logging
+import requests
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
@@ -40,15 +47,19 @@ app.config['SAML_PATH'] = os.path.join(os.path.dirname(os.path.abspath(__file__)
 
 
 def get_valid_groups():
-    """Read valid group names from users.json to validate SAML memberOf attributes."""
+    """Read valid group names from users.json and custom groups to validate SAML memberOf attributes."""
     try:
         users = jsonUsersReader()
         groups = set(u.get('memberOf', '') for u in users if u.get('memberOf'))
+        # Also include custom groups from groups.json
+        custom_groups = jsonGroupsReader()
+        groups.update(custom_groups.keys())
+        # Always include built-in groups
+        groups.update({'users', 'staffs', 'administrators', 'PlatformConfiguration'})
         return groups
     except Exception as e:
         logger.error(f'Failed to read valid groups: {e}')
-        # Fallback to known default groups
-        return {'users', 'administrators', 'PlatformConfiguration'}
+        return {'users', 'staffs', 'administrators', 'PlatformConfiguration'}
 
 
 def validate_saml_attributes(attributes):
@@ -109,6 +120,21 @@ def prepare_flask_request(request):
         # 'lowercase_urlencoding': True,
         'query_string': request.query_string
     }
+
+
+@app.before_request
+def redirect_localhost():
+    """Redirect localhost requests to 127.0.0.1 for consistent SAML handling."""
+    url_data = urlparse(request.url)
+    if url_data.hostname == 'localhost':
+        new_url = request.url.replace('://localhost', '://127.0.0.1', 1)
+        return redirect(new_url, code=301)
+
+
+@app.context_processor
+def inject_user_role():
+    """Inject the resolved user role into all templates for navbar rendering."""
+    return {'user_role': get_user_role()}
 
 
 @app.route('/', methods=['GET', 'POST'])
@@ -347,7 +373,7 @@ def deletecomplaint():
 #### ---- Admin Panel / User Management ---- ####
 
 def get_user_role():
-    """Returns the current user's role: 'instructor', 'admin', or None."""
+    """Returns the current user's role: 'instructor', 'admin', 'staffs', or None."""
     if 'samlUserdata' in session and len(session['samlUserdata']) > 0:
         attrs = session['samlUserdata']
         member_of = attrs.get('memberOf', [])
@@ -357,6 +383,13 @@ def get_user_role():
                 return 'instructor'
             elif group == 'administrators':
                 return 'admin'
+            elif group == 'staffs':
+                return 'staffs'
+            else:
+                # Check if it's a custom group with a permission level
+                perm = jsonGroupGetPermission(group)
+                if perm == 'staffs':
+                    return 'staffs'
     return None
 
 
@@ -445,6 +478,17 @@ def adminAddUser():
         return redirect('/admin/')
 
     jsonUserAdd(newUser)
+
+    # Sync group with IDP so next SAML assertion reflects the new group
+    try:
+        requests.post('http://idp/api/update_group', json={
+            'username': newUser['username'],
+            'group': new_member_of,
+            'action': 'set'
+        }, timeout=5)
+    except Exception as e:
+        logger.warning(f'Failed to sync new user group with IDP for {newUser["username"]}: {e}')
+
     return redirect('/admin/')
 
 
@@ -513,6 +557,17 @@ def adminEditUser(username):
         updatedData['password'] = new_password
 
     jsonUserUpdate(username, updatedData)
+
+    # Sync group with IDP so next SAML assertion reflects the updated group
+    try:
+        requests.post('http://idp/api/update_group', json={
+            'username': username,
+            'group': new_member_of,
+            'action': 'set'
+        }, timeout=5)
+    except Exception as e:
+        logger.warning(f'Failed to sync group change with IDP for {username}: {e}')
+
     return redirect('/admin/')
 
 
@@ -534,6 +589,16 @@ def adminDeleteUser(username):
         return redirect('/admin/')
 
     jsonUserDelete(username)
+
+    # Remove group override from IDP
+    try:
+        requests.post('http://idp/api/update_group', json={
+            'username': username,
+            'action': 'remove'
+        }, timeout=5)
+    except Exception as e:
+        logger.warning(f'Failed to sync user deletion with IDP for {username}: {e}')
+
     return redirect('/admin/')
 
 
@@ -545,7 +610,165 @@ def adminRestoreUsers():
         return redirect('/admin/')
 
     copyfile('users/users.json.bak', 'users/users.json')
+
+    # Clear all group overrides on IDP
+    try:
+        requests.post('http://idp/api/update_group', json={
+            'username': '__clear_all__',
+            'action': 'clear_all'
+        }, timeout=5)
+    except Exception as e:
+        logger.warning(f'Failed to clear IDP group overrides on restore: {e}')
+
     return redirect('/admin/')
+
+
+# ============================================================
+# Staff Panel Routes (HR-like group management)
+# ============================================================
+
+@app.route('/staff/')
+def staffPanel():
+    paint_logout = False
+    attributes = False
+
+    role = get_user_role()
+    if role not in ('instructor', 'staffs'):
+        return redirect('/')
+
+    if 'samlUserdata' in session:
+        paint_logout = True
+        if len(session['samlUserdata']) > 0:
+            attributes = session['samlUserdata'].items()
+
+    users = jsonUsersReader()
+    # Staff can only see/manage users NOT in administrators or PlatformConfiguration
+    visible_users = [u for u in users if u.get('memberOf') not in ('administrators', 'PlatformConfiguration')]
+
+    custom_groups = jsonGroupsReader()
+    # Build list of assignable groups (built-in non-admin + custom)
+    assignable_groups = ['users', 'staffs'] + list(custom_groups.keys())
+
+    return render_template('staff.html', paint_logout=paint_logout,
+                           attributes=attributes, users=visible_users,
+                           custom_groups=custom_groups,
+                           assignable_groups=assignable_groups,
+                           role=role)
+
+
+@app.route('/staff/groups/add', methods=['POST'])
+def staffAddGroup():
+    role = get_user_role()
+    if role not in ('instructor', 'staffs'):
+        return redirect('/')
+
+    group_name = request.form.get('group_name', '').strip()
+    permission_level = request.form.get('permission_level', 'users')
+
+    if not group_name:
+        return redirect('/staff/')
+
+    # Block reserved group names
+    reserved = {'administrators', 'PlatformConfiguration', 'users', 'staffs'}
+    if group_name in reserved:
+        return redirect('/staff/')
+
+    if permission_level not in ('staffs', 'users'):
+        permission_level = 'users'
+
+    jsonGroupAdd(group_name, permission_level)
+    return redirect('/staff/')
+
+
+@app.route('/staff/groups/delete/<group_name>', methods=['POST'])
+def staffDeleteGroup(group_name):
+    role = get_user_role()
+    if role not in ('instructor', 'staffs'):
+        return redirect('/')
+
+    # Move any users in this group back to 'users'
+    all_users = jsonUsersReader()
+    for u in all_users:
+        if u.get('memberOf') == group_name:
+            jsonUserUpdate(u['username'], {'memberOf': 'users'})
+            # Sync with IDP
+            try:
+                requests.post('http://idp/api/update_group', json={
+                    'username': u['username'], 'group': 'users', 'action': 'set'
+                }, timeout=5)
+            except Exception as e:
+                logger.warning(f'Failed to sync group deletion with IDP for {u["username"]}: {e}')
+
+    jsonGroupDelete(group_name)
+    return redirect('/staff/')
+
+
+@app.route('/staff/user/<username>/group', methods=['POST'])
+def staffUpdateUserGroup(username):
+    role = get_user_role()
+    if role not in ('instructor', 'staffs'):
+        return redirect('/')
+
+    new_group = request.form.get('group', '').strip()
+    if not new_group:
+        return redirect('/staff/')
+
+    # Cannot assign to admin/instructor groups
+    if new_group in ('administrators', 'PlatformConfiguration'):
+        return redirect('/staff/')
+
+    user = jsonUserGet(username)
+    if not user:
+        return redirect('/staff/')
+
+    # Staff cannot modify admin/instructor users
+    if user.get('memberOf') in ('administrators', 'PlatformConfiguration'):
+        return redirect('/staff/')
+
+    # Validate the target group exists (built-in or custom)
+    custom_groups = jsonGroupsReader()
+    valid_targets = {'users', 'staffs'} | set(custom_groups.keys())
+    if new_group not in valid_targets:
+        return redirect('/staff/')
+
+    # Update SP user database
+    jsonUserUpdate(username, {'memberOf': new_group})
+
+    # Sync with IDP so next SAML assertion reflects the new group
+    try:
+        requests.post('http://idp/api/update_group', json={
+            'username': username,
+            'group': new_group,
+            'action': 'set'
+        }, timeout=5)
+    except Exception as e:
+        logger.warning(f'Failed to sync group change with IDP for {username}: {e}')
+
+    return redirect('/staff/')
+
+
+@app.route('/staff/groups/restore', methods=['POST'])
+def staffRestoreGroups():
+    """Restore custom groups to original (empty) state from backup."""
+    role = get_user_role()
+    if role not in ('instructor', 'staffs'):
+        return redirect('/staff/')
+
+    # Reset any users in custom groups back to 'users'
+    custom_groups = jsonGroupsReader()
+    all_users = jsonUsersReader()
+    for u in all_users:
+        if u.get('memberOf') in custom_groups:
+            jsonUserUpdate(u['username'], {'memberOf': 'users'})
+            try:
+                requests.post('http://idp/api/update_group', json={
+                    'username': u['username'], 'group': 'users', 'action': 'set'
+                }, timeout=5)
+            except Exception as e:
+                logger.warning(f'Failed to sync group restore with IDP for {u["username"]}: {e}')
+
+    copyfile('groups/groups.json.bak', 'groups/groups.json')
+    return redirect('/staff/')
 
 
 if __name__ == "__main__":

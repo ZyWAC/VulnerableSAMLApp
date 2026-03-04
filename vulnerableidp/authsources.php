@@ -112,23 +112,16 @@ $config = array(
             'lastName' => array('Smith'),
             'username' => array('admin'),
         ),
-        'rsmith:password' => array(
-            'memberOf' => array('administrators'),
-            'emailAddress' => array('rsmith@jellystonep.com'),
-            'firstName' => array('Ranger'),
-            'lastName' => array('Smith'),
-            'username' => array('rsmith'),
-        ),
-        'brubble:password' => array(
-            'memberOf' => array('users'),
-            'emailAddress' => array('barney.rubble@bedrock.com'),
-            'firstName' => array('Barney'),
-            'lastName' => array('Rubble'),
-            'username' => array('brubble'),
+        'cindy:$Up3rS3cr3tEmpl0y33P@ssw0rd' => array(
+            'memberOf' => array('staffs'),
+            'emailAddress' => array('cindy@jellystonep.com'),
+            'firstName' => array('Cindy'),
+            'lastName' => array('Bear'),
+            'username' => array('cindy'),
         ),
         'instructor:G0od-LuckGu3ssingThisButHeyItCouldHappenRight?' => array(
             'memberOf' => array('PlatformConfiguration'),
-            'emailAddress' => array('rsmith@jellystonep.com'),
+            'emailAddress' => array('instructor@jellystonep.com'),
             'firstName' => array('Instructor'),
             'lastName' => array('Instructor'),
             'username' => array('Instructor'),
@@ -156,5 +149,26 @@ if (file_exists($registeredUsersFile)) {
                 );
             }
         }
+    }
+}
+
+/*
+ * Apply group overrides from the staff management panel.
+ * When a staffs user reassigns a user to a custom group via the SP,
+ * the SP calls the IDP API to write an override here.
+ */
+$overridesFile = '/var/simplesamlphp/data/group_overrides.json';
+if (file_exists($overridesFile)) {
+    $overrides = json_decode(file_get_contents($overridesFile), true);
+    if (is_array($overrides)) {
+        foreach ($config['jelly-parks'] as $key => &$value) {
+            if (is_array($value) && isset($value['username'])) {
+                $username = $value['username'][0];
+                if (isset($overrides[$username])) {
+                    $value['memberOf'] = array($overrides[$username]);
+                }
+            }
+        }
+        unset($value);
     }
 }

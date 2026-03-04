@@ -57,6 +57,61 @@ def jsonReader():
 #### ---- Everything below this is responsible for the Admin Panel / User Management ---- ####
 
 USERS_FILE = 'users/users.json'
+GROUPS_FILE = 'groups/groups.json'
+
+
+#### ---- Custom Group Management (Staff Panel) ---- ####
+
+def jsonGroupsReader():
+    """Read custom groups from groups.json"""
+    try:
+        with open(GROUPS_FILE, 'r') as f:
+            data = json.load(f)
+            return data.get('custom_groups', {})
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
+
+def jsonGroupsWriter(custom_groups):
+    """Write custom groups to groups.json"""
+    with open(GROUPS_FILE, 'w') as f:
+        json.dump({'custom_groups': custom_groups}, f, indent=2)
+
+def jsonGroupAdd(group_name, permission_level):
+    """Add a custom group. Returns True on success, False if already exists or protected."""
+    protected = ['users', 'staffs', 'administrators', 'PlatformConfiguration']
+    if group_name in protected:
+        return False
+    groups = jsonGroupsReader()
+    if group_name in groups:
+        return False
+    groups[group_name] = {'permission_level': permission_level}
+    jsonGroupsWriter(groups)
+    return True
+
+def jsonGroupDelete(group_name):
+    """Delete a custom group. Returns True on success."""
+    groups = jsonGroupsReader()
+    if group_name in groups:
+        del groups[group_name]
+        jsonGroupsWriter(groups)
+        return True
+    return False
+
+def jsonGroupGetPermission(group_name):
+    """Get the effective permission level for a group name.
+    Built-in groups return themselves; custom groups return their permission_level."""
+    built_in = {
+        'users': 'users',
+        'staffs': 'staffs',
+        'administrators': 'administrators',
+        'PlatformConfiguration': 'PlatformConfiguration'
+    }
+    if group_name in built_in:
+        return built_in[group_name]
+    groups = jsonGroupsReader()
+    if group_name in groups:
+        return groups[group_name].get('permission_level', 'users')
+    return 'users'
 
 def jsonUsersReader():
     """Read all users from the users JSON file"""

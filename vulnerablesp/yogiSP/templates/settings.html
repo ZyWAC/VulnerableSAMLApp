@@ -40,7 +40,49 @@
                       <i class="bi bi-bug text-muted"></i>
                       <div>
                         <strong>{{ key }}</strong>
-                        <div class="text-muted" style="font-size: 0.8rem;">XML comment injection vulnerability</div>
+                        <div class="text-muted" style="font-size: 0.8rem;">
+                          <i class="bi bi-exclamation-triangle me-1"></i>XML comment injection vulnerability. When enabled, the app uses <code>.text</code> (vulnerable) to parse attribute values; when disabled, uses <code>itertext()</code> (patched). This only affects how values like <code>administrators&lt;!----&gt;not</code> are parsed.
+                        </div>
+                      </div>
+                    {% elif key == 'wantMessagesSigned' %}
+                      <i class="bi bi-check2-square text-muted"></i>
+                      <div>
+                        <strong>{{ key }}</strong>
+                        <div class="text-muted" style="font-size: 0.8rem;">
+                          <i class="bi bi-info-circle me-1"></i>Checks that a <code>&lt;Signature&gt;</code> element <strong>exists</strong> in the SAML Response. Does <strong>NOT</strong> validate the signature cryptographically.
+                        </div>
+                      </div>
+                    {% elif key == 'wantAssertionsSigned' %}
+                      <i class="bi bi-check2-square text-muted"></i>
+                      <div>
+                        <strong>{{ key }}</strong>
+                        <div class="text-muted" style="font-size: 0.8rem;">
+                          <i class="bi bi-info-circle me-1"></i>Checks that a <code>&lt;Signature&gt;</code> element <strong>exists</strong> in the Assertion. Does <strong>NOT</strong> validate the signature cryptographically.
+                        </div>
+                      </div>
+                    {% elif key == 'validMessage' %}
+                      <i class="bi bi-shield-check text-muted"></i>
+                      <div>
+                        <strong>{{ key }}</strong>
+                        <div class="text-muted" style="font-size: 0.8rem;">
+                          <i class="bi bi-shield-fill-check me-1"></i>Actually <strong>validates</strong> the Response signature cryptographically. When enabled, any modification to the SAML Response will be rejected.
+                        </div>
+                      </div>
+                    {% elif key == 'validAssertion' %}
+                      <i class="bi bi-shield-check text-muted"></i>
+                      <div>
+                        <strong>{{ key }}</strong>
+                        <div class="text-muted" style="font-size: 0.8rem;">
+                          <i class="bi bi-shield-fill-check me-1"></i>Actually <strong>validates</strong> the Assertion signature cryptographically. When enabled, any modification to the Assertion will be rejected.
+                        </div>
+                      </div>
+                    {% elif key == 'signMetadata' %}
+                      <i class="bi bi-check2-square text-muted"></i>
+                      <div>
+                        <strong>{{ key }}</strong>
+                        <div class="text-muted" style="font-size: 0.8rem;">
+                          <i class="bi bi-info-circle me-1"></i>Sign the SP metadata.
+                        </div>
                       </div>
                     {% else %}
                       <i class="bi bi-check2-square text-muted"></i>
@@ -72,6 +114,13 @@
       <li>When the <strong>CVE-2017-11427</strong> checkbox is enabled, the application is <strong style="color: var(--danger);">vulnerable</strong> to XML comment injection in NameID and attribute values. When disabled, the patch is applied.</li>
       <li><strong>adminPanelEnabled</strong> (Instruction Mode) controls whether admin-role users can access the user management panel. Instructors always have full access regardless of this setting.</li>
     </ul>
+    <hr class="my-3" />
+    <h6 class="mb-3" style="font-weight: 600;"><i class="bi bi-exclamation-triangle me-2"></i>Important: Signature Presence vs. Validation</h6>
+    <div class="text-muted" style="font-size: 0.875rem;">
+      <p class="mb-2"><strong>wantMessagesSigned / wantAssertionsSigned</strong> only check that a <code>&lt;Signature&gt;</code> XML element is <strong>present</strong>. They do <strong>NOT</strong> verify the signature cryptographically. An attacker can modify the SAML response content and the existing (now-invalid) signature element will still satisfy these checks.</p>
+      <p class="mb-2"><strong>validMessage / validAssertion</strong> perform actual <strong>cryptographic validation</strong> of the signature. When enabled, any modification to the signed XML will be detected and rejected.</p>
+      <p class="mb-0"><strong style="color: var(--danger);">Real-world CVE-2017-11427 demo:</strong> Enable <code>validMessage</code> or <code>validAssertion</code> + <code>CVE-2017-11427</code>, then log in as <strong>booboo</strong> (group: <code>administratorsnot</code>). Intercept the SAML response and change <code>administratorsnot</code> → <code>administrators&lt;!----&gt;not</code>. XML C14N strips comments so the signature stays valid, but the vulnerable parser reads <code>administrators</code> → privilege escalation! Direct <code>administrators</code> fails because it doesn't match the original signed value.</p>
+    </div>
   </div>
 </div>
 

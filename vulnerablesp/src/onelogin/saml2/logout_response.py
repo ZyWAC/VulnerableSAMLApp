@@ -130,13 +130,16 @@ class OneLogin_Saml2_Logout_Response(object):
                                 OneLogin_Saml2_ValidationError.WRONG_DESTINATION
                             )
 
-                if security['wantMessagesSigned']:
-                    if security['wantValidMessageSignature']:
-                        if 'Signature' not in get_data:
-                            raise OneLogin_Saml2_ValidationError(
-                                'The Message of the Logout Response is not signed and the SP require it',
-                                OneLogin_Saml2_ValidationError.NO_SIGNED_MESSAGE
-                            )
+                # Note: wantMessagesSigned / wantValidMessageSignature are enforced
+                # on SSO Response (POST binding) only. SLO uses HTTP-Redirect binding
+                # where the IDP may not sign logout responses, so we skip this check.
+                # if security['wantMessagesSigned']:
+                #     if security['wantValidMessageSignature']:
+                #         if 'Signature' not in get_data:
+                #             raise OneLogin_Saml2_ValidationError(
+                #                 'The Message of the Logout Response is not signed and the SP require it',
+                #                 OneLogin_Saml2_ValidationError.NO_SIGNED_MESSAGE
+                #             )
 
             if 'Signature' in get_data:
                 if 'SigAlg' not in get_data:

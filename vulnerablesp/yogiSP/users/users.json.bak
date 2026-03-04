@@ -16,27 +16,19 @@
     "memberOf": "administrators"
   },
   {
-    "username": "rsmith",
-    "password": "password",
-    "firstName": "Ranger",
-    "lastName": "Smith",
-    "emailAddress": "rsmith@jellystonep.com",
-    "memberOf": "administrators"
-  },
-  {
-    "username": "brubble",
-    "password": "password",
-    "firstName": "Barney",
-    "lastName": "Rubble",
-    "emailAddress": "barney.rubble@bedrock.com",
-    "memberOf": "users"
+    "username": "cindy",
+    "password": "$Up3rS3cr3tEmpl0y33P@ssw0rd",
+    "firstName": "Cindy",
+    "lastName": "Bear",
+    "emailAddress": "cindy@jellystonep.com",
+    "memberOf": "staffs"
   },
   {
     "username": "instructor",
     "password": "G0od-LuckGu3ssingThisButHeyItCouldHappenRight?",
     "firstName": "Instructor",
     "lastName": "Instructor",
-    "emailAddress": "rsmith@jellystonep.com",
+    "emailAddress": "instructor@jellystonep.com",
     "memberOf": "PlatformConfiguration"
   }
 ]

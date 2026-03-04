@@ -49,9 +49,11 @@ ADD welcome.png /var/simplesamlphp/www/resources/
 
 # Registration page
 ADD register.php /var/www/html/register.php
+# Group management API (called by SP staff panel)
+ADD api_update_group.php /var/www/html/api_update_group.php
 RUN mkdir -p /var/simplesamlphp/data && chmod 777 /var/simplesamlphp/data
 
-# Configure Apache: ScriptAlias for /register and enable rewrite in default vhost
+# Configure Apache: aliases for /register and /api
 RUN { \
       echo '<Directory /var/www/html>'; \
       echo '    Options FollowSymLinks'; \
@@ -59,6 +61,7 @@ RUN { \
       echo '    Require all granted'; \
       echo '</Directory>'; \
       echo 'Alias /register /var/www/html/register.php'; \
+      echo 'Alias /api/update_group /var/www/html/api_update_group.php'; \
     } > /etc/apache2/conf-available/register.conf \
     && a2enconf register
 

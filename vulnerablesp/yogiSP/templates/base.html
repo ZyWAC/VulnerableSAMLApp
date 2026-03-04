@@ -314,19 +314,15 @@
           <ul class="navbar-nav me-auto">
             <li class="nav-item"><a class="nav-link" href="/complaints"><i class="bi bi-exclamation-triangle me-1"></i>Complaints</a></li>
             {% if attributes %}
-              {% for attr in attributes %}
-                {% if attr.0 == 'memberOf' %}
-                  {% for val in attr.1 %}
-                    {% if val == 'PlatformConfiguration' %}
-                      <li class="nav-item"><a class="nav-link" href="/settings"><i class="bi bi-gear me-1"></i>SAML Settings</a></li>
-                      <li class="nav-item"><a class="nav-link" href="/admin/"><i class="bi bi-people me-1"></i>Admin Panel</a></li>
-                    {% endif %}
-                    {% if val == 'administrators' %}
-                      <li class="nav-item"><a class="nav-link" href="/admin/"><i class="bi bi-people me-1"></i>Admin Panel</a></li>
-                    {% endif %}
-                  {% endfor %}
-                {% endif %}
-              {% endfor %}
+              {% if user_role == 'instructor' %}
+                <li class="nav-item"><a class="nav-link" href="/settings"><i class="bi bi-gear me-1"></i>SAML Settings</a></li>
+                <li class="nav-item"><a class="nav-link" href="/admin/"><i class="bi bi-people me-1"></i>Admin Panel</a></li>
+                <li class="nav-item"><a class="nav-link" href="/staff/"><i class="bi bi-person-badge me-1"></i>Staff Panel</a></li>
+              {% elif user_role == 'admin' %}
+                <li class="nav-item"><a class="nav-link" href="/admin/"><i class="bi bi-people me-1"></i>Admin Panel</a></li>
+              {% elif user_role == 'staffs' %}
+                <li class="nav-item"><a class="nav-link" href="/staff/"><i class="bi bi-person-badge me-1"></i>Staff Panel</a></li>
+              {% endif %}
             {% endif %}
             <li class="nav-item"><a class="nav-link" href="/learn"><i class="bi bi-book me-1"></i>Learn More</a></li>
           </ul>

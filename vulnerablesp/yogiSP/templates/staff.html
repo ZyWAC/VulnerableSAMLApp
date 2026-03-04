@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header">
+  <div class="icon" style="background: var(--success-light); color: var(--success);">
+    <i class="bi bi-person-badge-fill"></i>
+  </div>
+  <div>
+    <h3>Staff Panel</h3>
+    <div class="mt-1">
+      {% if role == 'instructor' %}
+        <span class="badge-role badge-instructor"><i class="bi bi-mortarboard me-1"></i>Instructor</span>
+        <span class="text-muted ms-2" style="font-size: 0.875rem;">Full access to staff management</span>
+      {% elif role == 'staffs' %}
+        <span class="badge-role" style="background: var(--success-light); color: var(--success);"><i class="bi bi-person-badge me-1"></i>Staffs</span>
+        <span class="text-muted ms-2" style="font-size: 0.875rem;">HR Manager &mdash; manage groups and user assignments</span>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Custom Groups Management -->
+<div class="card mb-4">
+  <div class="card-header d-flex align-items-center gap-2 px-4 py-3">
+    <i class="bi bi-collection"></i> Custom Groups
+  </div>
+  <div class="card-body p-0">
+    {% if custom_groups %}
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead>
+          <tr>
+            <th class="px-4">Group Name</th>
+            <th>Permission Level</th>
+            <th class="text-end pe-4">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for name, info in custom_groups.items() %}
+          <tr>
+            <td class="px-4"><strong>{{ name }}</strong></td>
+            <td>
+              {% if info.permission_level == 'staffs' %}
+                <span class="badge-role" style="background: var(--success-light); color: var(--success);">{{ info.permission_level }}</span>
+              {% else %}
+                <span class="badge-role badge-user">{{ info.permission_level }}</span>
+              {% endif %}
+            </td>
+            <td class="text-end pe-4">
+              <form action="/staff/groups/delete/{{ name }}" method="post" style="display:inline"
+                    onsubmit="return confirm('Delete group {{ name }}? Users in this group will be moved to users.')">
+                <button type="submit" class="btn btn-sm btn-danger"><i class="bi bi-trash me-1"></i>Delete</button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="text-center py-4 text-muted">
+      <i class="bi bi-inbox" style="font-size: 2rem;"></i>
+      <p class="mt-2 mb-0">No custom groups yet. Create one below.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Create New Group Form -->
+<div class="card mb-4">
+  <div class="card-header d-flex align-items-center gap-2 px-4 py-3">
+    <i class="bi bi-plus-circle"></i> Create Custom Group
+  </div>
+  <div class="card-body px-4">
+    <form action="/staff/groups/add" method="post">
+      <div class="row g-3" style="max-width: 500px;">
+        <div class="col-md-7">
+          <label for="group_name" class="form-label text-muted">Group Name</label>
+          <input type="text" class="form-control" id="group_name" name="group_name" required
+                 placeholder="e.g. engineering, marketing" />
+        </div>
+        <div class="col-md-5">
+          <label for="permission_level" class="form-label text-muted">Permission Level</label>
+          <select class="form-select" id="permission_level" name="permission_level">
+            <option value="users">users</option>
+            <option value="staffs">staffs</option>
+          </select>
+        </div>
+        <div class="col-12 mt-3">
+          <button type="submit" class="btn btn-success"><i class="bi bi-plus-circle me-2"></i>Create Group</button>
+        </div>
+      </div>
+    </form>
+    <div class="mt-3">
+      <small class="text-muted">
+        <i class="bi bi-info-circle me-1"></i>
+        Reserved names (<code>administrators</code>, <code>PlatformConfiguration</code>, <code>users</code>, <code>staffs</code>) cannot be used.
+      </small>
+    </div>
+  </div>
+</div>
+
+<!-- User Group Assignment -->
+<div class="card mb-4">
+  <div class="card-header d-flex align-items-center gap-2 px-4 py-3">
+    <i class="bi bi-people"></i> User Group Assignment
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead>
+          <tr>
+            <th class="px-4">Username</th>
+            <th>First Name</th>
+            <th>Last Name</th>
+            <th>Current Group</th>
+            <th class="text-end pe-4">Assign Group</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for user in users %}
+          <tr>
+            <td class="px-4"><strong>{{ user.username }}</strong></td>
+            <td>{{ user.firstName }}</td>
+            <td>{{ user.lastName }}</td>
+            <td>
+              {% if user.memberOf == 'staffs' %}
+                <span class="badge-role" style="background: var(--success-light); color: var(--success);">{{ user.memberOf }}</span>
+              {% else %}
+                <span class="badge-role badge-user">{{ user.memberOf }}</span>
+              {% endif %}
+            </td>
+            <td class="text-end pe-4">
+              <form action="/staff/user/{{ user.username }}/group" method="post" class="d-inline-flex align-items-center gap-2">
+                <select class="form-select form-select-sm" name="group" style="width: auto; min-width: 140px;">
+                  {% for g in assignable_groups %}
+                    <option value="{{ g }}" {% if g == user.memberOf %}selected{% endif %}>{{ g }}</option>
+                  {% endfor %}
+                </select>
+                <button type="submit" class="btn btn-sm btn-outline-accent"><i class="bi bi-arrow-repeat me-1"></i>Assign</button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Restore Groups -->
+<div class="card">
+  <div class="card-header d-flex align-items-center gap-2 px-4 py-3">
+    <i class="bi bi-arrow-counterclockwise"></i> Restore Groups
+  </div>
+  <div class="card-body px-4">
+    <p class="text-muted mb-3">Reset all custom groups back to empty defaults. Users in custom groups will be moved to <code>users</code>.</p>
+    <form action="/staff/groups/restore" method="post"
+          onsubmit="return confirm('This will delete ALL custom groups and reset affected users. Continue?')">
+      <button type="submit" class="btn btn-warning"><i class="bi bi-arrow-counterclockwise me-2"></i>Restore Default Groups</button>
+    </form>
+  </div>
+</div>
+
+<div class="mt-4">
+  <small class="text-muted">
+    <i class="bi bi-info-circle me-1"></i>
+    <strong>Note:</strong> Group changes are synced with the IDP automatically.
+    Users must <strong>re-login</strong> for the new group to appear in their SAML assertion.
+  </small>
+</div>
+
+{% endblock %}
