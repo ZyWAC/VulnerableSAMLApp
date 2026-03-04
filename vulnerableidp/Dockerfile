@@ -47,6 +47,21 @@ ADD loginuserpass.twig /var/simplesamlphp/modules/core/templates/
 COPY loginuserpass.php /var/simplesamlphp/modules/core/templates/loginuserpass.tpl.php
 ADD welcome.png /var/simplesamlphp/www/resources/
 
+# Registration page
+ADD register.php /var/www/html/register.php
+RUN mkdir -p /var/simplesamlphp/data && chmod 777 /var/simplesamlphp/data
+
+# Configure Apache: ScriptAlias for /register and enable rewrite in default vhost
+RUN { \
+      echo '<Directory /var/www/html>'; \
+      echo '    Options FollowSymLinks'; \
+      echo '    AllowOverride All'; \
+      echo '    Require all granted'; \
+      echo '</Directory>'; \
+      echo 'Alias /register /var/www/html/register.php'; \
+    } > /etc/apache2/conf-available/register.conf \
+    && a2enconf register
+
 EXPOSE 80
 
 # Start the web service

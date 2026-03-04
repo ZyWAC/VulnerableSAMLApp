@@ -143,9 +143,17 @@ sudo docker run -it --rm --name sp -d -p 8000:8000 sp:1.0
 
 ---
 
-## TODO
+## User Registration
 
-- [ ] Open user registration
+The IDP now supports open user registration at **http://127.0.0.1/register**. New users can create an account with a username, password, email, first name, and last name. Registered users are assigned the `users` role by default and can immediately log in via the SAML flow.
+
+Registered users are stored in `/var/simplesamlphp/data/registered_users.json` inside the IDP container and are dynamically loaded by `authsources.php` at authentication time. A "Register here" link is also shown on the IDP login page.
+
+> **Note:** Since this is a deliberately vulnerable app, registration data does not persist across container rebuilds.
+
+---
+
+## TODO
 - [ ] Implement attack scenarios based on [SAMLRaider](https://github.com/CompassSecurity/SAMLRaider) capabilities (XSW, certificate cloning, SAML message manipulation)
 
 ---

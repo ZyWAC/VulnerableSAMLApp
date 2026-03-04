@@ -218,6 +218,9 @@ if (strlen($this->data['username']) > 0) {
             </form>
         </div>
         <div class="idp-footer">
+            <div style="margin-bottom: 0.75rem;">
+                Don't have an account? <a href="/register" style="color: #0ea5e9; font-weight: 600; text-decoration: none;">Register here</a>
+            </div>
             Jellystone Identity Provider &mdash; Vulnerable SAML App
             <?php if (!empty($this->data['links'])) { ?>
             <div style="margin-top: 0.5rem;">
