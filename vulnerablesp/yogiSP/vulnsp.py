@@ -1,4 +1,3 @@
-from __future__ import print_function
 import os
 import sys
 import json
@@ -9,7 +8,7 @@ from shutil import copyfile
 from flask import (Flask, request, render_template, redirect, session,
                    make_response)
 
-from urlparse import urlparse
+from urllib.parse import urlparse
 
 from onelogin.saml2.auth import OneLogin_Saml2_Auth
 from onelogin.saml2.utils import OneLogin_Saml2_Utils
@@ -26,7 +25,7 @@ from jsonparse import jsonReader
 
 app = Flask(__name__, static_url_path='/static')
 app.config['SECRET_KEY'] = 'onelogindemopytoolkit'
-app.config['SAML_PATH'] = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'saml')
+app.config['SAML_PATH'] = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'saml')
 
 
 def init_saml_auth(req):

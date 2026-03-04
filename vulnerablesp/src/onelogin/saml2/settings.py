@@ -420,7 +420,7 @@ class OneLogin_Saml2_Settings(object):
                     attributeConsumingService = sp['attributeConsumingService']
                     if 'serviceName' not in attributeConsumingService:
                         errors.append('sp_attributeConsumingService_serviceName_not_found')
-                    elif not isinstance(attributeConsumingService['serviceName'], basestring):
+                    elif not isinstance(attributeConsumingService['serviceName'], str):
                         errors.append('sp_attributeConsumingService_serviceName_type_invalid')
 
                     if 'requestedAttributes' not in attributeConsumingService:
@@ -438,7 +438,7 @@ class OneLogin_Saml2_Settings(object):
                             if 'isRequired' in req_attrib and type(req_attrib['isRequired']) != bool:
                                 errors.append('sp_attributeConsumingService_requestedAttributes_isRequired_type_invalid')
 
-                    if "serviceDescription" in attributeConsumingService and not isinstance(attributeConsumingService['serviceDescription'], basestring):
+                    if "serviceDescription" in attributeConsumingService and not isinstance(attributeConsumingService['serviceDescription'], str):
                         errors.append('sp_attributeConsumingService_serviceDescription_type_invalid')
 
                 slo_url = sp.get('singleLogoutService', {}).get('url')
@@ -694,7 +694,7 @@ class OneLogin_Saml2_Settings(object):
         :rtype: list
         """
 
-        assert isinstance(xml, basestring)
+        assert isinstance(xml, str)
 
         if len(xml) == 0:
             raise Exception('Empty string supplied as input')

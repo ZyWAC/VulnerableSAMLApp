@@ -53,7 +53,7 @@ class OneLogin_Saml2_Authn_Request(object):
         provider_name_str = ''
         organization_data = settings.get_organization()
         if isinstance(organization_data, dict) and organization_data:
-            langs = organization_data.keys()
+            langs = list(organization_data.keys())
             if 'en-US' in langs:
                 lang = 'en-US'
             else:

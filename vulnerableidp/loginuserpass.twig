@@ -1,0 +1,100 @@
+{% set pagetitle = 'Jellystone IDP' %}
+
+{% extends "@core/base.twig" %}
+
+{% block postload %}
+    <script src="{{ asset('js/loginuserpass.js', 'core') }}"></script>
+{% endblock %}
+
+{% block content %}
+    {% if errorcode -%}
+    <div style="border-left: 1px solid #e8e8e8; border-bottom: 1px solid #e8e8e8; background: #f5f5f5">
+        {% set errtitles = errorcodes['title'] %}
+        {% set errtitle = errtitles[errorcode] %}
+        <p><strong>{{ errtitle|trans(errorparams) }}</strong></p>
+
+        {% set errdescs = errorcodes['descr'] %}
+        {% set errdesc = errdescs[errorcode] %}
+        <p>{{ errdesc|trans(errorparams) }}</p>
+    </div>
+    {%- endif %}
+
+    <center>
+    <h1 style="clear: both">Jellystone IDP</h1>
+    <img src="/simplesamlphp/resources/welcome.png">
+    <br>
+    <form action="?" method="post" name="f" style="background-color:#E6E6FA">
+        <table>
+            <tr>
+                <td rowspan="2">
+                </td>
+                <td><label for="username">{{ 'Username'|trans }}</label></td>
+                <td>
+                    <input id="username" {{ forceUsername ? 'disabled="disabled"' }}
+                           type="text" name="username"
+                    {%- if not forceUsername %} tabindex="1" {% endif %}
+                     value="{{ username }}">
+                </td>
+            {% if rememberUsernameEnabled and not forceUsername -%}
+                <td>
+                    <input type="checkbox" id="remember_username" tabindex="4"
+                           {{ rememberUsernameChecked ? 'checked="checked"' }}
+                           name="remember_username" value="Yes">
+                    <small>{{ 'Remember my username'|trans }}</small>
+                </td>
+            </tr>
+            {%- endif %}
+            <tr>
+                <td><label for="password">{{ 'Password'|trans }}</label></td>
+                <td>
+                    <input id="password" type="password" tabindex="2" name="password">
+                </td>
+            {% if rememberMeEnabled -%}
+                <td>
+                    <input type="checkbox" id="remember_me" tabindex="5"
+                        {{ rememberMeChecked ? 'checked="checked"' }}
+                           name="remember_me" value="Yes">
+                    <small>{{ 'Remember me'|trans }}</small>
+                </td>
+            </tr>
+            {%- endif %}
+            {% if organizations is defined -%}
+                <tr>
+                    <td></td>
+                    <td><label for="organization">{{ 'Organization'|trans }}</label></td>
+                    <td><select name="organization" tabindex="3">
+                            {%- for orgId, orgDesc in organizations -%}
+                                {% if orgId == selectedOrg|default(null) -%}
+                                    {% set selected = 'selected="selected"' %}
+                                {%- else -%}
+                                    {% set selected = '' %}
+                                {%- endif -%}
+                                <option {{ selected }} value="{{ orgId }}">{{ orgDesc|trans }}</option>
+                            {%- endfor %}
+                        </select></td>
+                </tr>
+            {%- endif %}
+            <tr>
+                <td></td><td></td>
+                <td>
+                    <button id="regularsubmit" class="btn"
+                            tabindex="6" type="submit"
+                            data-processing="{{ 'Processing...'|trans }}">
+                        {{ 'Login'|trans }}
+                    </button>
+                </td>
+            </tr>
+        </table>
+        {%- for name, value in stateparams %}
+        <input type="hidden" name="{{ name }}" value="{{ value }}">
+        {%- endfor %}
+    </form>
+    {% if links -%}
+    <ul class="links" style="margin-top: 2em">
+        {% for link in links -%}
+        <li><a href="{{ link.href }}">{{ link['text']|trans }}</a></li>
+        {% endfor %}
+    </ul>
+    {%- endif %}
+    </center>
+{% endblock %}

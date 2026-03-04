@@ -9,7 +9,7 @@ Metadata class of OneLogin's Python Toolkit.
 
 """
 
-import urllib2
+import urllib.request
 import ssl
 
 from copy import deepcopy
@@ -40,12 +40,12 @@ class OneLogin_Saml2_IdPMetadataParser(object):
         """
         valid = False
         if validate_cert:
-            response = urllib2.urlopen(url)
+            response = urllib.request.urlopen(url)
         else:
             ctx = ssl.create_default_context()
             ctx.check_hostname = False
             ctx.verify_mode = ssl.CERT_NONE
-            response = urllib2.urlopen(url, context=ctx)
+            response = urllib.request.urlopen(url, context=ctx)
         xml = response.read()
 
         if xml:

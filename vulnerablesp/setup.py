@@ -16,7 +16,7 @@ setup(
         'Intended Audience :: Developers',
         'Intended Audience :: System Administrators',
         'Operating System :: OS Independent',
-        'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3',
     ],
     author='OneLogin',
     author_email='support@onelogin.com',
@@ -32,9 +32,9 @@ setup(
     },
     test_suite='tests',
     install_requires=[
-        'dm.xmlsec.binding==1.3.3',
+        'xmlsec>=1.3.13',
         'isodate>=0.5.0',
-        'defusedxml==0.4.1',
+        'defusedxml>=0.7.1',
     ],
     extras_require={
         'test': (

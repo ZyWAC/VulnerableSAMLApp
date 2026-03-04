@@ -12,7 +12,7 @@ Initializes the SP SAML instance
 """
 
 from base64 import b64encode
-from urllib import quote_plus
+from urllib.parse import quote_plus
 from defusedxml.lxml import tostring
 
 from onelogin.saml2.settings import OneLogin_Saml2_Settings
@@ -20,7 +20,8 @@ from onelogin.saml2.response import OneLogin_Saml2_Response
 from onelogin.saml2.errors import OneLogin_Saml2_Error
 from onelogin.saml2.logout_response import OneLogin_Saml2_Logout_Response
 from onelogin.saml2.constants import OneLogin_Saml2_Constants
-from onelogin.saml2.utils import OneLogin_Saml2_Utils, xmlsec
+from onelogin.saml2.utils import OneLogin_Saml2_Utils
+import xmlsec
 from onelogin.saml2.logout_request import OneLogin_Saml2_Logout_Request
 from onelogin.saml2.authn_request import OneLogin_Saml2_Authn_Request
 
@@ -287,7 +288,7 @@ class OneLogin_Saml2_Auth(object):
         :returns: Attribute value if exists or []
         :rtype: string
         """
-        assert isinstance(name, basestring)
+        assert isinstance(name, str)
         value = None
         if self.__attributes and name in self.__attributes.keys():
             value = self.__attributes[name]
@@ -484,8 +485,8 @@ class OneLogin_Saml2_Auth(object):
                 OneLogin_Saml2_Error.PRIVATE_KEY_NOT_FOUND
             )
 
-        dsig_ctx = xmlsec.DSigCtx()
-        dsig_ctx.signKey = xmlsec.Key.loadMemory(key, xmlsec.KeyDataFormatPem, None)
+        dsig_ctx = xmlsec.SignatureContext()
+        dsig_ctx.key = xmlsec.Key.from_memory(key, xmlsec.constants.KeyDataFormatPem)
 
         msg = '%s=%s' % (saml_type, quote_plus(saml_data))
         if relay_state is not None:
@@ -494,15 +495,15 @@ class OneLogin_Saml2_Auth(object):
 
         # Sign the metadata with our private key.
         sign_algorithm_transform_map = {
-            OneLogin_Saml2_Constants.DSA_SHA1: xmlsec.TransformDsaSha1,
-            OneLogin_Saml2_Constants.RSA_SHA1: xmlsec.TransformRsaSha1,
-            OneLogin_Saml2_Constants.RSA_SHA256: xmlsec.TransformRsaSha256,
-            OneLogin_Saml2_Constants.RSA_SHA384: xmlsec.TransformRsaSha384,
-            OneLogin_Saml2_Constants.RSA_SHA512: xmlsec.TransformRsaSha512
+            OneLogin_Saml2_Constants.DSA_SHA1: xmlsec.constants.TransformDsaSha1,
+            OneLogin_Saml2_Constants.RSA_SHA1: xmlsec.constants.TransformRsaSha1,
+            OneLogin_Saml2_Constants.RSA_SHA256: xmlsec.constants.TransformRsaSha256,
+            OneLogin_Saml2_Constants.RSA_SHA384: xmlsec.constants.TransformRsaSha384,
+            OneLogin_Saml2_Constants.RSA_SHA512: xmlsec.constants.TransformRsaSha512
         }
-        sign_algorithm_transform = sign_algorithm_transform_map.get(sign_algorithm, xmlsec.TransformRsaSha1)
+        sign_algorithm_transform = sign_algorithm_transform_map.get(sign_algorithm, xmlsec.constants.TransformRsaSha1)
 
-        signature = dsig_ctx.signBinary(str(msg), sign_algorithm_transform)
+        signature = dsig_ctx.sign_binary(msg.encode('utf-8') if isinstance(msg, str) else msg, sign_algorithm_transform)
         return b64encode(signature)
 
     def get_last_response_xml(self, pretty_print_if_possible=False):
@@ -515,7 +516,7 @@ class OneLogin_Saml2_Auth(object):
         """
         response = None
         if self.__last_response is not None:
-            if isinstance(self.__last_response, basestring):
+            if isinstance(self.__last_response, str):
                 response = self.__last_response
             else:
                 response = tostring(self.__last_response, pretty_print=pretty_print_if_possible)

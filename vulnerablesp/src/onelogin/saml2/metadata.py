@@ -55,7 +55,7 @@ class OneLogin_Saml2_Metadata(object):
         """
         if valid_until is None:
             valid_until = int(time()) + OneLogin_Saml2_Metadata.TIME_VALID
-        if not isinstance(valid_until, basestring):
+        if not isinstance(valid_until, str):
             if isinstance(valid_until, datetime):
                 valid_until_time = valid_until.timetuple()
             else:
@@ -66,7 +66,7 @@ class OneLogin_Saml2_Metadata(object):
 
         if cache_duration is None:
             cache_duration = OneLogin_Saml2_Metadata.TIME_CACHED
-        if not isinstance(cache_duration, basestring):
+        if not isinstance(cache_duration, str):
             cache_duration_str = 'PT%sS' % cache_duration  # 'P'eriod of 'T'ime x 'S'econds
         else:
             cache_duration_str = cache_duration
@@ -96,7 +96,7 @@ class OneLogin_Saml2_Metadata(object):
                     req_attr_isrequired_str = " isRequired=\"%s\"" % 'true' if req_attribs['isRequired'] else 'false'
 
                 if 'attributeValue' in req_attribs.keys() and req_attribs['attributeValue']:
-                    if isinstance(req_attribs['attributeValue'], basestring):
+                    if isinstance(req_attribs['attributeValue'], str):
                         req_attribs['attributeValue'] = [req_attribs['attributeValue']]
 
                     req_attr_aux_str = ">"
@@ -249,7 +249,7 @@ class OneLogin_Saml2_Metadata(object):
         try:
             xml = parseString(metadata.encode('utf-8'))
         except Exception as e:
-            raise Exception('Error parsing metadata. ' + e.message)
+            raise Exception('Error parsing metadata. ' + str(e))
 
         formated_cert = OneLogin_Saml2_Utils.format_cert(cert, False)
         x509_certificate = xml.createElementNS(OneLogin_Saml2_Constants.NS_DS, 'ds:X509Certificate')

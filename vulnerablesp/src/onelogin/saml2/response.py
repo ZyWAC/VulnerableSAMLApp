@@ -101,8 +101,6 @@ class OneLogin_Saml2_Response(object):
 
             signed_elements = self.process_signed_elements()
 
-            print(str(signed_elements)) #yogi
-
             has_signed_response = '{%s}Response' % OneLogin_Saml2_Constants.NS_SAMLP in signed_elements
             has_signed_assertion = '{%s}Assertion' % OneLogin_Saml2_Constants.NS_SAML in signed_elements
 
@@ -322,7 +320,7 @@ class OneLogin_Saml2_Response(object):
             self.__error = err.__str__()
             debug = self.__settings.is_debug_active()
             if debug:
-                print err.__str__()
+                print(err.__str__())
             if raise_exceptions:
                 raise err
             return False
@@ -592,10 +590,7 @@ class OneLogin_Saml2_Response(object):
         response_tag = '{%s}Response' % OneLogin_Saml2_Constants.NS_SAMLP
         assertion_tag = '{%s}Assertion' % OneLogin_Saml2_Constants.NS_SAML
 
-        print(response_tag) #yogi
-
         for sign_node in sign_nodes:
-            print(str(sign_node) + ' sign node') #yogi
             signed_element = sign_node.getparent().tag
             if signed_element != response_tag and signed_element != assertion_tag:
                 raise OneLogin_Saml2_ValidationError(
@@ -638,7 +633,6 @@ class OneLogin_Saml2_Response(object):
                     verified_seis.append(sei)
 
             signed_elements.append(signed_element)
-            print(signed_element + ' Signed Element') #yogi
 
         if signed_elements:
             if not self.validate_signed_elements(signed_elements, raise_exceptions=True):
@@ -646,7 +640,6 @@ class OneLogin_Saml2_Response(object):
                     'Found an unexpected Signature Element. SAML Response rejected',
                     OneLogin_Saml2_ValidationError.UNEXPECTED_SIGNED_ELEMENT
                 )
-        print(str(signed_elements) + ' just before return')
         return signed_elements
 
     @return_false_on_exception
