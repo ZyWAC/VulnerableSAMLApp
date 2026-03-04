@@ -52,6 +52,59 @@ def jsonReader():
     settingValues = {'wantMessagesSigned':str(wantMessagesSigned),'wantAssertionsSigned':str(wantAssertionsSigned),'signMetadata':str(signMetadata),'validMessage':str(validMessage),'validAssertion':str(validAssertion),'cve-2017-11427':str(cve201711427)}
     return settingValues
 
+#### ---- Everything below this is responsible for the Admin Panel / User Management ---- ####
+
+USERS_FILE = 'users/users.json'
+
+def jsonUsersReader():
+    """Read all users from the users JSON file"""
+    with open(USERS_FILE, 'r') as f:
+        return json.load(f)
+
+def jsonUsersWriter(users):
+    """Write full user list to the users JSON file"""
+    with open(USERS_FILE, 'w') as f:
+        json.dump(users, f, indent=2)
+
+def jsonUserAdd(newUser):
+    """Add a new user. Returns True on success, False if username already exists."""
+    users = jsonUsersReader()
+    for u in users:
+        if u['username'] == newUser['username']:
+            return False
+    users.append(newUser)
+    jsonUsersWriter(users)
+    return True
+
+def jsonUserUpdate(username, updatedData):
+    """Update an existing user by username. Returns True on success, False if not found."""
+    users = jsonUsersReader()
+    for i, u in enumerate(users):
+        if u['username'] == username:
+            users[i].update(updatedData)
+            jsonUsersWriter(users)
+            return True
+    return False
+
+def jsonUserDelete(username):
+    """Delete a user by username. Returns True on success, False if not found."""
+    users = jsonUsersReader()
+    original_len = len(users)
+    users = [u for u in users if u['username'] != username]
+    if len(users) < original_len:
+        jsonUsersWriter(users)
+        return True
+    return False
+
+def jsonUserGet(username):
+    """Get a single user by username. Returns dict or None."""
+    users = jsonUsersReader()
+    for u in users:
+        if u['username'] == username:
+            return u
+    return None
+
+
 #### ---- Everything below this is responsibile for the Complaints page and associated functionality ---- ####
 
 #### Porting from CSV to JSON for greater flexibility.....glen might have been right, this one time

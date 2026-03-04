@@ -24,6 +24,10 @@
 						{% for val in attr.1 %}
 							{% if val == 'PlatformConfiguration' %}
 								<li><a href="/settings">Saml Settings</a></li>
+								<li><a href="/admin/">Admin Panel</a></li>
+							{% endif %}
+							{% if val == 'administrators' %}
+								<li><a href="/admin/">Admin Panel</a></li>
 							{% endif %}
 						{% endfor %}
 					{% endif %}

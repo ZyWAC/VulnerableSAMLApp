@@ -23,6 +23,13 @@ from jsonparse import jsonSingleComplaintDelete
 from jsonparse import jsonEditor
 from jsonparse import jsonReader
 
+## Import functions for the admin panel / user management
+from jsonparse import jsonUsersReader
+from jsonparse import jsonUserAdd
+from jsonparse import jsonUserUpdate
+from jsonparse import jsonUserDelete
+from jsonparse import jsonUserGet
+
 app = Flask(__name__, static_url_path='/static')
 app.config['SECRET_KEY'] = 'onelogindemopytoolkit'
 app.config['SAML_PATH'] = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'saml')
@@ -254,6 +261,175 @@ def deletecomplaint():
     complaintID = request.args.get('id')
     jsonSingleComplaintDelete(complaintID)
     return redirect('/complaints')
+
+
+#### ---- Admin Panel / User Management ---- ####
+
+def get_user_role():
+    """Returns the current user's role: 'instructor', 'admin', or None."""
+    if 'samlUserdata' in session and len(session['samlUserdata']) > 0:
+        attrs = session['samlUserdata']
+        member_of = attrs.get('memberOf', [])
+        if member_of:
+            group = member_of[0]
+            if group == 'PlatformConfiguration':
+                return 'instructor'
+            elif group == 'administrators':
+                return 'admin'
+    return None
+
+
+def can_manage_user(role, target_user):
+    """Check if the current role can manage the target user.
+    instructor: can manage everyone
+    admin: can manage everyone EXCEPT PlatformConfiguration (instructor) users
+    """
+    if role == 'instructor':
+        return True
+    elif role == 'admin':
+        return target_user.get('memberOf', '') != 'PlatformConfiguration'
+    return False
+
+
+@app.route('/admin/')
+def adminPanel():
+    paint_logout = False
+    attributes = False
+
+    role = get_user_role()
+    if role not in ('instructor', 'admin'):
+        return redirect('/')
+
+    if 'samlUserdata' in session:
+        paint_logout = True
+        if len(session['samlUserdata']) > 0:
+            attributes = session['samlUserdata'].items()
+
+    users = jsonUsersReader()
+    # Filter: admin cannot see/manage instructor (PlatformConfiguration) users
+    if role == 'admin':
+        visible_users = [u for u in users if u.get('memberOf') != 'PlatformConfiguration']
+    else:
+        visible_users = users
+
+    return render_template('admin.html', paint_logout=paint_logout,
+                           attributes=attributes, users=visible_users, role=role)
+
+
+@app.route('/admin/add', methods=['POST'])
+def adminAddUser():
+    role = get_user_role()
+    if role not in ('instructor', 'admin'):
+        return redirect('/')
+
+    new_member_of = request.form.get('memberOf', 'users')
+    # admin cannot create PlatformConfiguration users
+    if role == 'admin' and new_member_of == 'PlatformConfiguration':
+        return redirect('/admin/')
+
+    newUser = {
+        'username': request.form.get('username', '').strip(),
+        'password': request.form.get('password', ''),
+        'firstName': request.form.get('firstName', '').strip(),
+        'lastName': request.form.get('lastName', '').strip(),
+        'emailAddress': request.form.get('emailAddress', '').strip(),
+        'memberOf': new_member_of
+    }
+
+    if not newUser['username']:
+        return redirect('/admin/')
+
+    jsonUserAdd(newUser)
+    return redirect('/admin/')
+
+
+@app.route('/admin/edit/<username>', methods=['GET'])
+def adminEditUserPage(username):
+    paint_logout = False
+    attributes = False
+
+    role = get_user_role()
+    if role not in ('instructor', 'admin'):
+        return redirect('/')
+
+    user = jsonUserGet(username)
+    if not user:
+        return redirect('/admin/')
+
+    # admin cannot edit instructor users
+    if not can_manage_user(role, user):
+        return redirect('/admin/')
+
+    if 'samlUserdata' in session:
+        paint_logout = True
+        if len(session['samlUserdata']) > 0:
+            attributes = session['samlUserdata'].items()
+
+    return render_template('admin_edit.html', paint_logout=paint_logout,
+                           attributes=attributes, user=user, role=role)
+
+
+@app.route('/admin/edit/<username>', methods=['POST'])
+def adminEditUser(username):
+    role = get_user_role()
+    if role not in ('instructor', 'admin'):
+        return redirect('/')
+
+    user = jsonUserGet(username)
+    if not user:
+        return redirect('/admin/')
+
+    if not can_manage_user(role, user):
+        return redirect('/admin/')
+
+    new_member_of = request.form.get('memberOf', user.get('memberOf', 'users'))
+    # admin cannot promote to PlatformConfiguration
+    if role == 'admin' and new_member_of == 'PlatformConfiguration':
+        new_member_of = user.get('memberOf', 'users')
+
+    updatedData = {
+        'firstName': request.form.get('firstName', user['firstName']).strip(),
+        'lastName': request.form.get('lastName', user['lastName']).strip(),
+        'emailAddress': request.form.get('emailAddress', user['emailAddress']).strip(),
+        'memberOf': new_member_of
+    }
+
+    # Only update password if a new one was provided
+    new_password = request.form.get('password', '')
+    if new_password:
+        updatedData['password'] = new_password
+
+    jsonUserUpdate(username, updatedData)
+    return redirect('/admin/')
+
+
+@app.route('/admin/delete/<username>', methods=['POST'])
+def adminDeleteUser(username):
+    role = get_user_role()
+    if role not in ('instructor', 'admin'):
+        return redirect('/')
+
+    user = jsonUserGet(username)
+    if not user:
+        return redirect('/admin/')
+
+    if not can_manage_user(role, user):
+        return redirect('/admin/')
+
+    jsonUserDelete(username)
+    return redirect('/admin/')
+
+
+@app.route('/admin/restore', methods=['POST'])
+def adminRestoreUsers():
+    """Restore users to original state from backup."""
+    role = get_user_role()
+    if role != 'instructor':
+        return redirect('/admin/')
+
+    copyfile('users/users.json.bak', 'users/users.json')
+    return redirect('/admin/')
+
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=8000, debug=True)

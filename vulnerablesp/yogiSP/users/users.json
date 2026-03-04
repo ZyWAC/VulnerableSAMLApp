@@ -1,0 +1,42 @@
+[
+  {
+    "username": "yogi",
+    "password": "bear",
+    "firstName": "Yogi",
+    "lastName": "Bear",
+    "emailAddress": "yogi@jellystonep.com",
+    "memberOf": "users"
+  },
+  {
+    "username": "admin",
+    "password": "this-is-the-administrator-pasword-oh-no-is-that-a-typo-in-password",
+    "firstName": "Ranger",
+    "lastName": "Smith",
+    "emailAddress": "admin@jellystonep.com",
+    "memberOf": "administrators"
+  },
+  {
+    "username": "rsmith",
+    "password": "password",
+    "firstName": "Ranger",
+    "lastName": "Smith",
+    "emailAddress": "rsmith@jellystonep.com",
+    "memberOf": "administrators"
+  },
+  {
+    "username": "brubble",
+    "password": "password",
+    "firstName": "Barney",
+    "lastName": "Rubble",
+    "emailAddress": "barney.rubble@bedrock.com",
+    "memberOf": "administratorsbutnot"
+  },
+  {
+    "username": "instructor",
+    "password": "G0od-LuckGu3ssingThisButHeyItCouldHappenRight?",
+    "firstName": "Instructor",
+    "lastName": "Instructor",
+    "emailAddress": "rsmith@jellystonep.com",
+    "memberOf": "PlatformConfiguration"
+  }
+]
