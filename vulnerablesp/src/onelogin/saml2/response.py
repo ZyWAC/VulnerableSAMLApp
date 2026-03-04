@@ -427,6 +427,7 @@ class OneLogin_Saml2_Response(object):
 
         is_strict = self.__settings.is_strict()
         want_nameid = self.__settings.get_security_data().get('wantNameId', True)
+        cve_2017_11427 = self.__settings.get_security_data().get('cve-2017-11427', False)
         if nameid is None:
             if is_strict and want_nameid:
                 raise OneLogin_Saml2_ValidationError(
@@ -434,13 +435,21 @@ class OneLogin_Saml2_Response(object):
                     OneLogin_Saml2_ValidationError.NO_NAMEID
                 )
         else:
-            if is_strict and want_nameid and not nameid.text:
+            # CVE-2017-11427: XML comment injection in NameID
+            # .text only returns text before the first comment/child element
+            # ''.join(itertext()) returns the full concatenated text content
+            if cve_2017_11427:
+                nameid_value = nameid.text  # Vulnerable: ignores text after XML comments
+            else:
+                nameid_value = ''.join(nameid.itertext())  # Patched: gets full text
+
+            if is_strict and want_nameid and not nameid_value:
                 raise OneLogin_Saml2_ValidationError(
                     'An empty NameID value found',
                     OneLogin_Saml2_ValidationError.EMPTY_NAMEID
                 )
 
-            nameid_data = {'Value': nameid.text}
+            nameid_data = {'Value': nameid_value}
             for attr in ['Format', 'SPNameQualifier', 'NameQualifier']:
                 value = nameid.get(attr, None)
                 if value:
@@ -524,6 +533,7 @@ class OneLogin_Saml2_Response(object):
         EncryptedAttributes are not supported
         """
         attributes = {}
+        cve_2017_11427 = self.__settings.get_security_data().get('cve-2017-11427', False)
         attribute_nodes = self.__query_assertion('/saml:AttributeStatement/saml:Attribute')
         for attribute_node in attribute_nodes:
             attr_name = attribute_node.get('Name')
@@ -535,20 +545,28 @@ class OneLogin_Saml2_Response(object):
 
             values = []
             for attr in attribute_node.iterchildren('{%s}AttributeValue' % OneLogin_Saml2_Constants.NSMAP['saml']):
-                # Remove any whitespace (which may be present where attributes are
-                # nested inside NameID children).
-                if attr.text:
-                    text = attr.text.strip()
+                # CVE-2017-11427: XML comment injection in attribute values
+                if cve_2017_11427:
+                    attr_text = attr.text  # Vulnerable
+                else:
+                    attr_text = ''.join(attr.itertext())  # Patched
+
+                if attr_text:
+                    text = attr_text.strip()
                     if text:
                         values.append(text)
 
                 # Parse any nested NameID children
                 for nameid in attr.iterchildren('{%s}NameID' % OneLogin_Saml2_Constants.NSMAP['saml']):
+                    if cve_2017_11427:
+                        nid_value = nameid.text  # Vulnerable
+                    else:
+                        nid_value = ''.join(nameid.itertext())  # Patched
                     values.append({
                         'NameID': {
                             'Format': nameid.get('Format'),
                             'NameQualifier': nameid.get('NameQualifier'),
-                            'value': nameid.text
+                            'value': nid_value
                         }
                     })
 

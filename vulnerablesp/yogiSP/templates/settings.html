@@ -27,7 +27,7 @@
     </thead>
 	<tbody>
 	{% if currentSettings %}
-		{% for key, value in currentSettings.iteritems() %}
+		{% for key, value in currentSettings.items() %}
 		<tr><td>{{ key }}</td>
 		<td><ul class="list-unstyled">
         
@@ -42,7 +42,7 @@
 
 <hr />
 <p>*Note CVE-2017-11427 applies to the particular library used for this application (the onelogin python library). Other CVEs exist for this vulnerability.</p>
-<p>**Note CVE-2017-11427 has not been patched yet in the library in the application. The text box above does nothing currently.</p>
+<p>**When the CVE-2017-11427 checkbox is enabled, the application is <strong>vulnerable</strong> to XML comment injection in NameID and attribute values. When disabled, the patch is applied.</p>
 
 
 
