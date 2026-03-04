@@ -85,7 +85,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             // Save to file
             if (file_put_contents($usersFile, json_encode($users, JSON_PRETTY_PRINT)) !== false) {
-                $message = 'Registration successful! You can now <a href="/simplesamlphp/" style="color: #0ea5e9; font-weight: 600;">log in</a> with your credentials.';
+                $message = 'Registration successful! You can now <a href="http://127.0.0.1:8000/" style="color: #0ea5e9; font-weight: 600;">log in</a> with your credentials.';
                 $messageType = 'success';
                 // Clear form fields on success
                 $username = $email = $firstName = $lastName = '';
