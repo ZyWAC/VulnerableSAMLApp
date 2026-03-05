@@ -124,7 +124,7 @@ $config = array(
             'emailAddress' => array('instructor@jellystonep.com'),
             'firstName' => array('Instructor'),
             'lastName' => array('Instructor'),
-            'username' => array('Instructor'),
+            'username' => array('instructor'),
         ),
     ),
 );

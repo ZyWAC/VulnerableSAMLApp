@@ -45,12 +45,48 @@
             <td class="px-4"><code>{{ dict_item['id'] }}</code></td>
             <td>{{ dict_item['description'] }}</td>
             <td>
-              {% if dict_item['severity']|lower in ['high', 'critical'] %}
-                <span class="badge-role badge-instructor">{{ dict_item['severity'] }}</span>
-              {% elif dict_item['severity']|lower == 'medium' %}
-                <span class="badge-role badge-admin">{{ dict_item['severity'] }}</span>
+              {# Normalize severity: numbers → level name, text → as-is #}
+              {% set sev = dict_item['severity'] %}
+              {% if sev|string|int(-1) != -1 %}
+                {% set sev_num = sev|int %}
+                {% if sev_num >= 81 %}
+                  {% set sev_label = 'Critical' %}
+                {% elif sev_num >= 61 %}
+                  {% set sev_label = 'High' %}
+                {% elif sev_num >= 31 %}
+                  {% set sev_label = 'Medium' %}
+                {% elif sev_num >= 11 %}
+                  {% set sev_label = 'Low' %}
+                {% else %}
+                  {% set sev_label = 'Info' %}
+                {% endif %}
+                {% set sev_display = sev_label ~ ' (' ~ sev ~ ')' %}
               {% else %}
-                <span class="badge-role badge-user">{{ dict_item['severity'] }}</span>
+                {% set sev_lower = sev|lower %}
+                {% if sev_lower == 'critical' %}
+                  {% set sev_label = 'Critical' %}
+                {% elif sev_lower == 'high' %}
+                  {% set sev_label = 'High' %}
+                {% elif sev_lower == 'medium' %}
+                  {% set sev_label = 'Medium' %}
+                {% elif sev_lower == 'low' %}
+                  {% set sev_label = 'Low' %}
+                {% else %}
+                  {% set sev_label = 'Info' %}
+                {% endif %}
+                {% set sev_display = sev %}
+              {% endif %}
+
+              {% if sev_label == 'Critical' %}
+                <span class="badge" style="background: #dc2626; color: #fff;">{{ sev_display }}</span>
+              {% elif sev_label == 'High' %}
+                <span class="badge" style="background: #ef4444; color: #fff;">{{ sev_display }}</span>
+              {% elif sev_label == 'Medium' %}
+                <span class="badge" style="background: #f59e0b; color: #000;">{{ sev_display }}</span>
+              {% elif sev_label == 'Low' %}
+                <span class="badge" style="background: #22c55e; color: #fff;">{{ sev_display }}</span>
+              {% else %}
+                <span class="badge" style="background: #9ca3af; color: #fff;">{{ sev_display }}</span>
               {% endif %}
             </td>
             <td>{{ dict_item['complainer'] }}</td>

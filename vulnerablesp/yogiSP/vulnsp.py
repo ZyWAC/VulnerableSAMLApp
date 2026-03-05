@@ -198,7 +198,8 @@ def index():
             try:
                 username = saml_attributes.get('username', [None])[0]
                 if username:
-                    existing = jsonUserGet(username)
+                    # Case-insensitive lookup to avoid duplicates
+                    existing = jsonUserGet(username) or jsonUserGet(username.lower())
                     if not existing:
                         new_user = {
                             'username': username,
