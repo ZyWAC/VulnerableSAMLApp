@@ -292,8 +292,9 @@ def update():
                         validAssertion = 'validAssertion' in request.form
                         cve201711427 = 'cve-2017-11427' in request.form
                         adminPanelEnabled = 'adminPanelEnabled' in request.form
+                        xswVulnerable = 'xswVulnerable' in request.form
         
-                        jsonEditor(wantMessagesSigned,wantAssertionsSigned,signMetadata,validMessage,validAssertion,cve201711427,adminPanelEnabled)
+                        jsonEditor(wantMessagesSigned,wantAssertionsSigned,signMetadata,validMessage,validAssertion,cve201711427,adminPanelEnabled,xswVulnerable)
 
                         return redirect('/settings/')
     return redirect('/')

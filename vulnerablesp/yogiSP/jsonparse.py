@@ -8,7 +8,7 @@ import time
 
 #### Update the settings stored in the settings file.
 #### This is the file that controls the security levels for the application
-def jsonEditor(wantMessagesSigned,wantAssertionsSigned,signMetadata,validMessage,validAssertion,cve201711427,adminPanelEnabled=False):
+def jsonEditor(wantMessagesSigned,wantAssertionsSigned,signMetadata,validMessage,validAssertion,cve201711427,adminPanelEnabled=False,xswVulnerable=False):
 
     filename = 'saml/advanced_settings.json'
     with open(filename) as data_file:
@@ -24,6 +24,7 @@ def jsonEditor(wantMessagesSigned,wantAssertionsSigned,signMetadata,validMessage
         data_loaded['security']['wantValidAssertionsSignature'] = validAssertion
         data_loaded['security']['cve-2017-11427'] = cve201711427
         data_loaded['security']['adminPanelEnabled'] = adminPanelEnabled
+        data_loaded['security']['xswVulnerable'] = xswVulnerable
         print(data_loaded['security']['wantMessagesSigned'])
     data_file.close()
 
@@ -51,7 +52,8 @@ def jsonReader():
     data_file.close()
 	
     adminPanelEnabled = data_loaded['security'].get('adminPanelEnabled', False)
-    settingValues = {'wantMessagesSigned':str(wantMessagesSigned),'wantAssertionsSigned':str(wantAssertionsSigned),'signMetadata':str(signMetadata),'validMessage':str(validMessage),'validAssertion':str(validAssertion),'cve-2017-11427':str(cve201711427),'adminPanelEnabled':str(adminPanelEnabled)}
+    xswVulnerable = data_loaded['security'].get('xswVulnerable', False)
+    settingValues = {'wantMessagesSigned':str(wantMessagesSigned),'wantAssertionsSigned':str(wantAssertionsSigned),'signMetadata':str(signMetadata),'validMessage':str(validMessage),'validAssertion':str(validAssertion),'cve-2017-11427':str(cve201711427),'adminPanelEnabled':str(adminPanelEnabled),'xswVulnerable':str(xswVulnerable)}
     return settingValues
 
 #### ---- Everything below this is responsible for the Admin Panel / User Management ---- ####

@@ -105,22 +105,17 @@ class OneLogin_Saml2_Response(object):
             has_signed_assertion = '{%s}Assertion' % OneLogin_Saml2_Constants.NS_SAML in signed_elements
 
             if self.__settings.is_strict():
-                no_valid_xml_msg = 'Invalid SAML Response. Not match the saml-schema-protocol-2.0.xsd'
-                res = OneLogin_Saml2_Utils.validate_xml(
-                    tostring(self.document),
-                    'saml-schema-protocol-2.0.xsd',
-                    self.__settings.is_debug_active()
-                )
-                if not isinstance(res, Document):
-                    raise OneLogin_Saml2_ValidationError(
-                        no_valid_xml_msg,
-                        OneLogin_Saml2_ValidationError.INVALID_XML_FORMAT
-                    )
+                security = self.__settings.get_security_data()
+                xsw_vulnerable = security.get('xswVulnerable', False)
 
-                # If encrypted, check also the decrypted document
-                if self.encrypted:
+                # XSW Vulnerability: skip XML schema validation when XSW mode is enabled.
+                # XSW attacks restructure the XML document (e.g., nesting Response inside
+                # Signature), which violates the SAML protocol XSD schema. A vulnerable SP
+                # that doesn't perform schema validation would accept these structures.
+                if not xsw_vulnerable:
+                    no_valid_xml_msg = 'Invalid SAML Response. Not match the saml-schema-protocol-2.0.xsd'
                     res = OneLogin_Saml2_Utils.validate_xml(
-                        tostring(self.decrypted_document),
+                        tostring(self.document),
                         'saml-schema-protocol-2.0.xsd',
                         self.__settings.is_debug_active()
                     )
@@ -130,7 +125,18 @@ class OneLogin_Saml2_Response(object):
                             OneLogin_Saml2_ValidationError.INVALID_XML_FORMAT
                         )
 
-                security = self.__settings.get_security_data()
+                    # If encrypted, check also the decrypted document
+                    if self.encrypted:
+                        res = OneLogin_Saml2_Utils.validate_xml(
+                            tostring(self.decrypted_document),
+                            'saml-schema-protocol-2.0.xsd',
+                            self.__settings.is_debug_active()
+                        )
+                        if not isinstance(res, Document):
+                            raise OneLogin_Saml2_ValidationError(
+                                no_valid_xml_msg,
+                                OneLogin_Saml2_ValidationError.INVALID_XML_FORMAT
+                            )
                 current_url = OneLogin_Saml2_Utils.get_self_url_no_query(request_data)
 
                 # Check if the InResponseTo of the Response matchs the ID of the AuthNRequest (requestId) if provided
@@ -300,20 +306,31 @@ class OneLogin_Saml2_Response(object):
 
             # If json config wants signature validation
             if security.get('wantValidMessageSignature', False):
-                # If find a Signature on the Response, validates it checking the original response
-                if has_signed_response and not OneLogin_Saml2_Utils.validate_sign(self.document, cert, fingerprint, fingerprintalg, xpath=OneLogin_Saml2_Utils.RESPONSE_SIGNATURE_XPATH, multicerts=multicerts, raise_exceptions=False):
-                    raise OneLogin_Saml2_ValidationError(
-                        'Signature validation failed. SAML Response rejected',
-                        OneLogin_Saml2_ValidationError.INVALID_SIGNATURE
-                    )
+                xsw_vulnerable = security.get('xswVulnerable', False)
+                # XSW Vulnerability: skip cryptographic signature validation when XSW is enabled.
+                # The real XSW vulnerability is the "confused deputy" pattern:
+                #   1. SP validates the signature on the ORIGINAL signed element (passes)
+                #   2. SP then extracts data from a DIFFERENT (evil) element
+                # We simulate this by skipping cryptographic validation while keeping
+                # the presence check (wantMessagesSigned) active.
+                if not xsw_vulnerable:
+                    response_sig_xpath = OneLogin_Saml2_Utils.RESPONSE_SIGNATURE_XPATH
+                    if has_signed_response and not OneLogin_Saml2_Utils.validate_sign(self.document, cert, fingerprint, fingerprintalg, xpath=response_sig_xpath, multicerts=multicerts, raise_exceptions=False):
+                        raise OneLogin_Saml2_ValidationError(
+                            'Signature validation failed. SAML Response rejected',
+                            OneLogin_Saml2_ValidationError.INVALID_SIGNATURE
+                        )
             # If json config requests assertion validation
             if security.get('wantValidAssertionsSignature', False):
-                document_check_assertion = self.decrypted_document if self.encrypted else self.document
-                if has_signed_assertion and not OneLogin_Saml2_Utils.validate_sign(document_check_assertion, cert, fingerprint, fingerprintalg, xpath=OneLogin_Saml2_Utils.ASSERTION_SIGNATURE_XPATH, multicerts=multicerts, raise_exceptions=False):
-                    raise OneLogin_Saml2_ValidationError(
-                        'Signature validation failed. SAML Response rejected',
-                        OneLogin_Saml2_ValidationError.INVALID_SIGNATURE
-                    )
+                xsw_vulnerable = security.get('xswVulnerable', False)
+                if not xsw_vulnerable:
+                    document_check_assertion = self.decrypted_document if self.encrypted else self.document
+                    assertion_sig_xpath = OneLogin_Saml2_Utils.ASSERTION_SIGNATURE_XPATH
+                    if has_signed_assertion and not OneLogin_Saml2_Utils.validate_sign(document_check_assertion, cert, fingerprint, fingerprintalg, xpath=assertion_sig_xpath, multicerts=multicerts, raise_exceptions=False):
+                        raise OneLogin_Saml2_ValidationError(
+                            'Signature validation failed. SAML Response rejected',
+                            OneLogin_Saml2_ValidationError.INVALID_SIGNATURE
+                        )
 
             return True
         except Exception as err:
@@ -580,6 +597,12 @@ class OneLogin_Saml2_Response(object):
         :returns: True if only 1 assertion encrypted or not
         :rtype: bool
         """
+        # XSW Vulnerability: when enabled, skip assertion count validation
+        # This allows XSW attacks that inject additional assertions
+        security = self.__settings.get_security_data()
+        if security.get('xswVulnerable', False):
+            return True
+
         encrypted_assertion_nodes = OneLogin_Saml2_Utils.query(self.document, '//saml:EncryptedAssertion')
         assertion_nodes = OneLogin_Saml2_Utils.query(self.document, '//saml:Assertion')
 
@@ -600,6 +623,23 @@ class OneLogin_Saml2_Response(object):
         :returns: The signed elements tag names
         :rtype: list
         """
+        # XSW Vulnerability: when enabled, use relaxed signed element detection
+        # Don't validate structural integrity (Reference URI match, duplicates, etc.)
+        # This allows XSW attacks where the Signature's reference doesn't match the parent ID
+        security = self.__settings.get_security_data()
+        if security.get('xswVulnerable', False):
+            sign_nodes = self.__query('//ds:Signature')
+            signed_elements = []
+            response_tag = '{%s}Response' % OneLogin_Saml2_Constants.NS_SAMLP
+            assertion_tag = '{%s}Assertion' % OneLogin_Saml2_Constants.NS_SAML
+            for sign_node in sign_nodes:
+                parent = sign_node.getparent()
+                if parent is not None:
+                    parent_tag = parent.tag
+                    if (parent_tag == response_tag or parent_tag == assertion_tag) and parent_tag not in signed_elements:
+                        signed_elements.append(parent_tag)
+            return signed_elements
+
         sign_nodes = self.__query('//ds:Signature')
 
         signed_elements = []
@@ -742,6 +782,34 @@ class OneLogin_Saml2_Response(object):
         """
         assertion_expr = '/saml:Assertion'
         signature_expr = '/ds:Signature/ds:SignedInfo/ds:Reference'
+
+        # XSW Vulnerability: when enabled, use naive assertion lookup
+        # Instead of following the Signature Reference URI to find the trusted assertion,
+        # the vulnerable SP processes the first assertion it finds — which in XSW attacks
+        # is the attacker-controlled evil assertion.
+        #
+        # We use //saml:Assertion (descendant search) to find the FIRST assertion in
+        # document order. In all XSW variants (1-8), the evil assertion appears first.
+        # We then query children directly from that element (relative XPath) to avoid
+        # matching duplicate IDs across evil + original assertions.
+        security = self.__settings.get_security_data()
+        if security.get('xswVulnerable', False):
+            # Universal descendant search: works for all XSW1-8 variants
+            all_assertions = self.__query('//saml:Assertion')
+
+            if all_assertions:
+                # Query children directly from the first (evil) assertion element
+                # using relative XPath: '.' + '/saml:Conditions' → './saml:Conditions'
+                evil_assertion = all_assertions[0]
+                if self.encrypted:
+                    document = self.decrypted_document
+                else:
+                    document = self.document
+                return OneLogin_Saml2_Utils.query(document, '.' + xpath_expr, context=evil_assertion)
+            else:
+                final_query = '/samlp:Response' + assertion_expr + xpath_expr
+                return self.__query(final_query)
+
         signed_assertion_query = '/samlp:Response' + assertion_expr + signature_expr
         assertion_reference_nodes = self.__query(signed_assertion_query)
 

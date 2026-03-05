@@ -25,6 +25,7 @@
         <tbody>
           {% if currentSettings %}
             {% for key, value in currentSettings.items() %}
+              {% if key != 'cve-2017-11427' %}
               <tr>
                 <td class="px-4">
                   <div class="d-flex align-items-center gap-2">
@@ -36,12 +37,12 @@
                           <i class="bi bi-info-circle me-1"></i>Instruction Mode: When enabled, admin users can access the full admin panel. When disabled, admin users only see a welcome message.
                         </div>
                       </div>
-                    {% elif key == 'cve-2017-11427' %}
-                      <i class="bi bi-bug text-muted"></i>
+                    {% elif key == 'xswVulnerable' %}
+                      <i class="bi bi-shuffle text-muted"></i>
                       <div>
-                        <strong>{{ key }}</strong>
+                        <strong style="color: var(--danger);">{{ key }}</strong>
                         <div class="text-muted" style="font-size: 0.8rem;">
-                          <i class="bi bi-exclamation-triangle me-1"></i>XML comment injection vulnerability. When enabled, the app uses <code>.text</code> (vulnerable) to parse attribute values; when disabled, uses <code>itertext()</code> (patched). This only affects how values like <code>administrators&lt;!----&gt;not</code> are parsed.
+                          <i class="bi bi-exclamation-triangle me-1"></i>XML Signature Wrapping (XSW1–XSW8). When enabled, attackers can use XML Signature Wrapping to bypass signature validation and escalate privileges.
                         </div>
                       </div>
                     {% elif key == 'wantMessagesSigned' %}
@@ -96,32 +97,51 @@
                   </div>
                 </td>
               </tr>
+              {% endif %}
             {% endfor %}
           {% endif %}
         </tbody>
       </table>
     </div>
   </div>
+
+  <!-- CVE Vulnerabilities -->
+  <div class="card mb-4">
+    <div class="card-header d-flex align-items-center gap-2 px-4 py-3">
+      <i class="bi bi-bug-fill"></i> CVE Vulnerabilities
+    </div>
+    <div class="card-body px-4">
+      <p class="text-muted mb-3" style="font-size: 0.875rem;">
+        Toggle known CVE vulnerabilities on/off. Multiple CVEs can be enabled simultaneously.
+      </p>
+
+      <!-- CVE-2017-11427 -->
+      <div class="card mb-3">
+        <div class="card-body py-2 px-3">
+          <div class="d-flex align-items-start justify-content-between">
+            <div>
+              <strong>CVE-2017-11427</strong>
+              <span class="badge bg-warning text-dark ms-2">XML Comment Injection</span>
+              <div class="text-muted mt-1" style="font-size: 0.8rem;">
+                When enabled, attackers can inject XML comments into signed attribute values to bypass signature validation and escalate privileges.
+              </div>
+            </div>
+            <div class="form-check form-switch ms-3" style="min-width: 50px;">
+              <input class="form-check-input" type="checkbox" role="switch" id="cve-2017-11427" name="cve-2017-11427" {% if currentSettings and currentSettings['cve-2017-11427'] == 'True' %}checked{% endif %}>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="text-muted text-center" style="font-size: 0.8rem;">
+        <i class="bi bi-plus-circle me-1"></i>More CVEs will be added in future updates.
+      </div>
+    </div>
+  </div>
+
   <button type="submit" class="btn btn-accent"><i class="bi bi-check-lg me-2"></i>Apply Changes</button>
 </form>
 
-<hr class="my-4" />
-<div class="card">
-  <div class="card-body px-4">
-    <h6 class="mb-3" style="font-weight: 600;"><i class="bi bi-info-circle me-2"></i>Notes</h6>
-    <ul class="text-muted mb-0" style="font-size: 0.875rem;">
-      <li><strong>CVE-2017-11427</strong> applies to the particular library used for this application (the OneLogin Python library). Other CVEs exist for this vulnerability.</li>
-      <li>When the <strong>CVE-2017-11427</strong> checkbox is enabled, the application is <strong style="color: var(--danger);">vulnerable</strong> to XML comment injection in NameID and attribute values. When disabled, the patch is applied.</li>
-      <li><strong>adminPanelEnabled</strong> (Instruction Mode) controls whether admin-role users can access the user management panel. Instructors always have full access regardless of this setting.</li>
-    </ul>
-    <hr class="my-3" />
-    <h6 class="mb-3" style="font-weight: 600;"><i class="bi bi-exclamation-triangle me-2"></i>Important: Signature Presence vs. Validation</h6>
-    <div class="text-muted" style="font-size: 0.875rem;">
-      <p class="mb-2"><strong>wantMessagesSigned / wantAssertionsSigned</strong> only check that a <code>&lt;Signature&gt;</code> XML element is <strong>present</strong>. They do <strong>NOT</strong> verify the signature cryptographically. An attacker can modify the SAML response content and the existing (now-invalid) signature element will still satisfy these checks.</p>
-      <p class="mb-2"><strong>validMessage / validAssertion</strong> perform actual <strong>cryptographic validation</strong> of the signature. When enabled, any modification to the signed XML will be detected and rejected.</p>
-      <p class="mb-0"><strong style="color: var(--danger);">Real-world CVE-2017-11427 demo:</strong> Enable <code>validMessage</code> or <code>validAssertion</code> + <code>CVE-2017-11427</code>, then log in as <strong>booboo</strong> (group: <code>administratorsnot</code>). Intercept the SAML response and change <code>administratorsnot</code> → <code>administrators&lt;!----&gt;not</code>. XML C14N strips comments so the signature stays valid, but the vulnerable parser reads <code>administrators</code> → privilege escalation! Direct <code>administrators</code> fails because it doesn't match the original signed value.</p>
-    </div>
-  </div>
-</div>
+
 
 {% endblock %}
