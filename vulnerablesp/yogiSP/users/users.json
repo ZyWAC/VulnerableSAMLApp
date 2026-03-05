@@ -8,14 +8,6 @@
     "memberOf": "users"
   },
   {
-    "username": "admin",
-    "password": "this-is-the-administrator-pasword-oh-no-is-that-a-typo-in-password",
-    "firstName": "Ranger",
-    "lastName": "Smith",
-    "emailAddress": "admin@jellystonep.com",
-    "memberOf": "administrators"
-  },
-  {
     "username": "cindy",
     "password": "$Up3rS3cr3tEmpl0y33P@ssw0rd",
     "firstName": "Cindy",
@@ -24,8 +16,16 @@
     "memberOf": "staffs"
   },
   {
+    "username": "admin",
+    "password": "this-is-the-administrator-pasword-oh-no-is-that-a-typo-in-password",
+    "firstName": "Ranger",
+    "lastName": "Smith",
+    "emailAddress": "admin@jellystonep.com",
+    "memberOf": "administrators"
+  },
+  {
     "username": "instructor",
-    "password": "G0od-LuckGu3ssingThisButHeyItCouldHappenRight?",
+    "password": "th1s-1s-th3-r34l-4dm1n157r470r-p455w0rd-y0u-th0ugh7-17-w45-4-7yp0-bu7-n0p3-7h15-15-4c7u4lly-th3-v4l1d-0n3-g00d-luck-gu355ing-17",
     "firstName": "Instructor",
     "lastName": "Instructor",
     "emailAddress": "instructor@jellystonep.com",

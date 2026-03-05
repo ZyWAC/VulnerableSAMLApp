@@ -44,7 +44,7 @@ docker compose up -d --build idp   # rebuild IDP only
 | Unprivileged | `yogi` | `bear` | users |
 | HR Staff | `cindy` | `$Up3rS3cr3tEmpl0y33P@ssw0rd` | staffs |
 | Admin | `admin` | `this-is-the-administrator-pasword-oh-no-is-that-a-typo-in-password` | administrators |
-| Instructor | `instructor` | `G0od-LuckGu3ssingThisButHeyItCouldHappenRight?` | PlatformConfiguration |
+| Instructor | `instructor` | `th1s-1s-th3-r34l-4dm1n157r470r-p455w0rd-y0u-th0ugh7-17-w45-4-7yp0-bu7-n0p3-7h15-15-4c7u4lly-th3-v4l1d-0n3-g00d-luck-gu355ing-17` | PlatformConfiguration |
 
 If you'd like to change user accounts or groups, edit `vulnerableidp/authsources.php`. All user accounts are statically assigned and created within that file.
 

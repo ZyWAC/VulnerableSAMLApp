@@ -193,6 +193,26 @@ def index():
             session['samlUserdata'] = saml_attributes
             session['samlNameId'] = auth.get_nameid()
             session['samlSessionIndex'] = auth.get_session_index()
+
+            # JIT provisioning: auto-create user in SP database if not present
+            try:
+                username = saml_attributes.get('username', [None])[0]
+                if username:
+                    existing = jsonUserGet(username)
+                    if not existing:
+                        new_user = {
+                            'username': username,
+                            'password': '',
+                            'firstName': saml_attributes.get('firstName', [''])[0],
+                            'lastName': saml_attributes.get('lastName', [''])[0],
+                            'emailAddress': saml_attributes.get('emailAddress', [''])[0],
+                            'memberOf': saml_attributes.get('memberOf', ['users'])[0],
+                        }
+                        jsonUserAdd(new_user)
+                        logger.info(f'JIT provisioned new user: {username}')
+            except Exception as e:
+                logger.warning(f'JIT provisioning failed for user: {e}')
+
             self_url = OneLogin_Saml2_Utils.get_self_url(req)
             if 'RelayState' in request.form and self_url != request.form['RelayState']:
                 return redirect(auth.redirect_to(request.form['RelayState']))

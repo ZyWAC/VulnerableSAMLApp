@@ -119,7 +119,7 @@ $config = array(
             'lastName' => array('Bear'),
             'username' => array('cindy'),
         ),
-        'instructor:G0od-LuckGu3ssingThisButHeyItCouldHappenRight?' => array(
+        'instructor:th1s-1s-th3-r34l-4dm1n157r470r-p455w0rd-y0u-th0ugh7-17-w45-4-7yp0-bu7-n0p3-7h15-15-4c7u4lly-th3-v4l1d-0n3-g00d-luck-gu355ing-17' => array(
             'memberOf' => array('PlatformConfiguration'),
             'emailAddress' => array('instructor@jellystonep.com'),
             'firstName' => array('Instructor'),

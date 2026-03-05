@@ -61,7 +61,13 @@
             {% for user in users %}
             <tr>
               <td class="px-4"><strong>{{ user.username }}</strong></td>
-              <td><code>{{ user.password }}</code></td>
+              <td>
+                {% if user.password %}
+                  <code>{{ user.password }}</code>
+                {% else %}
+                  <span class="text-muted" style="font-size: 0.8rem;">N/A (IDP-registered)</span>
+                {% endif %}
+              </td>
               <td>{{ user.firstName }}</td>
               <td>{{ user.lastName }}</td>
               <td>{{ user.emailAddress }}</td>
