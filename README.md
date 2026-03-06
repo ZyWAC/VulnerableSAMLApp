@@ -66,6 +66,7 @@ Configurable via the **Settings** page (Instructor only) or `advanced_settings.j
 | `validAssertion` | **Validate** Assertion signature cryptographically |
 | `signMetadata` | Sign SP metadata |
 | `adminPanelEnabled` | Toggle Admin Panel access for admin users |
+> **Key:** `wantMessagesSigned` / `wantAssertionsSigned` only check signature **presence**. Without `validMessage` / `validAssertion`, attackers can freely modify SAML content.
 
 **Vulnerability Settings** (separate toggle card in Settings):
 
@@ -81,8 +82,7 @@ Configurable via the **Settings** page (Instructor only) or `advanced_settings.j
 | Setting | Description |
 |---------|-------------|
 | `cve-2017-11427` | XML Comment Injection` |
-> **Key:** `wantMessagesSigned` / `wantAssertionsSigned` only check signature **presence**. Without `validMessage` / `validAssertion`, attackers can freely modify SAML content.
-
+> More will be added in future update
 
 
 ---
@@ -99,19 +99,7 @@ With the current configuration, the intended attack chain is:
 2. **XSW Attack** — Use XML Signature Wrapping to escalate your role from `users` to `staffs`
 3. **Create a Custom Group** — As a staff member, use the Staff Panel to create a group named `administratorsnot` and assign yourself to it
 4. **CVE-2017-11427** — Re-login, intercept the SAML Response, and inject an XML comment (`administrators<!---->not`) to escalate to `administrators`
-
-### XXE (XML External Entity)
-
-**Settings:** `xxeVulnerable` ✅
-
-Inject a DOCTYPE declaration with an external entity reference into the SAML Response. The vulnerable parser resolves the entity, triggering an out-of-band HTTP request to your Burp Collaborator (`*.oastify.com`).
-
-### XSLT Injection
-
-**Settings:** `xsltVulnerable` ✅
-
-Embed an XSLT stylesheet inside a `<ds:Transform>` element in the SAML Response signature. The vulnerable SP processes the transform during signature verification, allowing local file read (e.g. `unparsed-text('/etc/passwd')`) and triggering out-of-band requests to `*.oastify.com`.
-
+5. **Self-Assignment** — Using the Admin Panel to assign the `administrators` group to your account for persistent admin privileges.
 ---
 
 ## Multi-Host Deployment
