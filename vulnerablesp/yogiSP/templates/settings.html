@@ -25,7 +25,7 @@
         <tbody>
           {% if currentSettings %}
             {% for key, value in currentSettings.items() %}
-              {% if key != 'cve-2017-11427' %}
+              {% if key not in ['cve-2017-11427', 'xxeVulnerable', 'xsltVulnerable', 'xswVulnerable'] %}
               <tr>
                 <td class="px-4">
                   <div class="d-flex align-items-center gap-2">
@@ -35,14 +35,6 @@
                         <strong style="color: var(--warning);">{{ key }}</strong>
                         <div class="text-muted" style="font-size: 0.8rem;">
                           <i class="bi bi-info-circle me-1"></i>Instruction Mode: When enabled, admin users can access the full admin panel. When disabled, admin users only see a welcome message.
-                        </div>
-                      </div>
-                    {% elif key == 'xswVulnerable' %}
-                      <i class="bi bi-shuffle text-muted"></i>
-                      <div>
-                        <strong style="color: var(--danger);">{{ key }}</strong>
-                        <div class="text-muted" style="font-size: 0.8rem;">
-                          <i class="bi bi-exclamation-triangle me-1"></i>XML Signature Wrapping (XSW1–XSW8). When enabled, attackers can use XML Signature Wrapping to bypass signature validation and escalate privileges.
                         </div>
                       </div>
                     {% elif key == 'wantMessagesSigned' %}
@@ -105,14 +97,84 @@
     </div>
   </div>
 
-  <!-- CVE Vulnerabilities -->
+  <!-- Vulnerability Configuration -->
   <div class="card mb-4">
     <div class="card-header d-flex align-items-center gap-2 px-4 py-3">
-      <i class="bi bi-bug-fill"></i> CVE Vulnerabilities
+      <i class="bi bi-lightning-fill"></i> Vulnerability Configuration
     </div>
     <div class="card-body px-4">
       <p class="text-muted mb-3" style="font-size: 0.875rem;">
-        Toggle known CVE vulnerabilities on/off. Multiple CVEs can be enabled simultaneously.
+        Toggle attack surface simulations on/off. OOB requests (XXE/XSLT) are restricted to <code>*.oastify.com</code> only. XSLT also allows local file read.
+      </p>
+
+      <!-- XSW -->
+      <div class="card mb-3">
+        <div class="card-body py-2 px-3">
+          <div class="d-flex align-items-start justify-content-between">
+            <div>
+              <strong>XSW</strong>
+              <span class="badge bg-danger ms-2">XML Signature Wrapping</span>
+              <div class="text-muted mt-1" style="font-size: 0.8rem;">
+                When enabled, attackers can use XML Signature Wrapping (XSW1–XSW8) to bypass schema validation and signature verification, escalating privileges.
+              </div>
+            </div>
+            <div class="form-check form-switch ms-3" style="min-width: 50px;">
+              <input class="form-check-input" type="checkbox" role="switch" id="xswVulnerable" name="xswVulnerable" {% if currentSettings and currentSettings['xswVulnerable'] == 'True' %}checked{% endif %}>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- XXE -->
+      <div class="card mb-3">
+        <div class="card-body py-2 px-3">
+          <div class="d-flex align-items-start justify-content-between">
+            <div>
+              <strong>XXE</strong>
+              <span class="badge bg-danger ms-2">XML External Entity</span>
+              <div class="text-muted mt-1" style="font-size: 0.8rem;">
+                When enabled, the XML parser resolves external entities (DTD), allowing attackers to inject <code>&lt;!DOCTYPE&gt;</code> declarations that trigger out-of-band requests. Only <code>*.oastify.com</code> domains are reachable.
+              </div>
+            </div>
+            <div class="form-check form-switch ms-3" style="min-width: 50px;">
+              <input class="form-check-input" type="checkbox" role="switch" id="xxeVulnerable" name="xxeVulnerable" {% if currentSettings and currentSettings['xxeVulnerable'] == 'True' %}checked{% endif %}>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- XSLT -->
+      <div class="card mb-3">
+        <div class="card-body py-2 px-3">
+          <div class="d-flex align-items-start justify-content-between">
+            <div>
+              <strong>XSLT</strong>
+              <span class="badge bg-danger ms-2">XSLT Injection</span>
+              <div class="text-muted mt-1" style="font-size: 0.8rem;">
+                When enabled, XSLT stylesheets embedded in <code>&lt;ds:Transform&gt;</code> elements are processed during signature verification. Allows local file read (<code>/etc/passwd</code> etc.) and OOB requests to <code>*.oastify.com</code>.
+              </div>
+            </div>
+            <div class="form-check form-switch ms-3" style="min-width: 50px;">
+              <input class="form-check-input" type="checkbox" role="switch" id="xsltVulnerable" name="xsltVulnerable" {% if currentSettings and currentSettings['xsltVulnerable'] == 'True' %}checked{% endif %}>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="text-muted text-center" style="font-size: 0.8rem;">
+        <i class="bi bi-plus-circle me-1"></i>More vulnerability modes will be added in future updates.
+      </div>
+    </div>
+  </div>
+
+  <!-- CVE Configuration -->
+  <div class="card mb-4">
+    <div class="card-header d-flex align-items-center gap-2 px-4 py-3">
+      <i class="bi bi-bug-fill"></i> CVE Configuration
+    </div>
+    <div class="card-body px-4">
+      <p class="text-muted mb-3" style="font-size: 0.875rem;">
+        Toggle known CVE vulnerability reproductions on/off.
       </p>
 
       <!-- CVE-2017-11427 -->
@@ -134,7 +196,7 @@
       </div>
 
       <div class="text-muted text-center" style="font-size: 0.8rem;">
-        <i class="bi bi-plus-circle me-1"></i>More CVEs will be added in future updates.
+        <i class="bi bi-plus-circle me-1"></i>More CVE reproductions will be added in future updates.
       </div>
     </div>
   </div>

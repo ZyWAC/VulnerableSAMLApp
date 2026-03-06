@@ -9,14 +9,223 @@ SAML Response class of OneLogin's Python Toolkit.
 
 """
 
+import re
+import logging
+import urllib.request
 from base64 import b64decode
 from copy import deepcopy
 from defusedxml.lxml import tostring, fromstring
+from lxml import etree as raw_etree
 from xml.dom.minidom import Document
 
 from onelogin.saml2.constants import OneLogin_Saml2_Constants
 from onelogin.saml2.utils import OneLogin_Saml2_Utils, return_false_on_exception
 from onelogin.saml2.errors import OneLogin_Saml2_Error, OneLogin_Saml2_ValidationError
+
+logger = logging.getLogger(__name__)
+
+# Domain whitelist for OOB attacks (XXE / XSLT)
+ALLOWED_OOB_DOMAIN = '.oastify.com'
+
+
+class OastifyOnlyResolver(raw_etree.Resolver):
+    """Custom XML resolver that only allows requests to *.oastify.com domains.
+    All other external entity / DTD resolution is blocked."""
+
+    def resolve(self, system_url, public_id, context):
+        if system_url:
+            # Normalize: treat bare hostnames without scheme
+            url = system_url.strip()
+            hostname = url
+            if '://' in url:
+                from urllib.parse import urlparse
+                hostname = urlparse(url).hostname or ''
+            else:
+                # Bare domain like "xxx.oastify.com" or path-like
+                hostname = url.split('/')[0]
+
+            if hostname.endswith(ALLOWED_OOB_DOMAIN):
+                fetch_url = url if '://' in url else 'http://' + url
+                try:
+                    req = urllib.request.Request(
+                        fetch_url,
+                        headers={'User-Agent': 'VulnerableSAMLSP/1.0'}
+                    )
+                    data = urllib.request.urlopen(req, timeout=5).read()
+                    logger.warning('[XXE] OOB request to allowed domain: %s', fetch_url)
+                    return self.resolve_string(data, context)
+                except Exception as e:
+                    logger.warning('[XXE] OOB request failed for %s: %s', fetch_url, e)
+                    return self.resolve_string(b'', context)
+
+        # Block all non-oastify domains
+        return self.resolve_string(b'', context)
+
+
+def _process_xslt_transforms(document, security_data):
+    """Process XSLT transforms found in ds:Transform elements.
+    Simulates XSLT 2.0 variable resolution (unparsed-text, encode-for-uri, concat)
+    since lxml only supports XSLT 1.0. Only makes OOB requests to *.oastify.com domains.
+    Also allows local file reads as part of the XSLT data exfiltration chain."""
+
+    if not security_data.get('xsltVulnerable', False):
+        return
+
+    ns = {
+        'ds': 'http://www.w3.org/2000/09/xmldsig#',
+        'xsl': 'http://www.w3.org/1999/XSL/Transform',
+    }
+
+    # Find all xsl:stylesheet elements inside ds:Transform elements
+    xslt_nodes = document.xpath('//ds:Transform/xsl:stylesheet', namespaces=ns)
+    if not xslt_nodes:
+        xslt_nodes = document.xpath('//ds:Transform//xsl:stylesheet', namespaces=ns)
+
+    for xslt_node in xslt_nodes:
+        _simulate_xslt2_variables(xslt_node, ns)
+
+
+def _simulate_xslt2_variables(xslt_node, ns):
+    """Simulate XSLT 2.0 variable resolution chain.
+    Supports: unparsed-text(), encode-for-uri(), concat(), string literals.
+    Sends OOB requests only to *.oastify.com."""
+
+    variables = {}
+
+    # Collect all xsl:variable elements in order
+    var_nodes = xslt_node.xpath('.//xsl:variable', namespaces=ns)
+
+    for var_node in var_nodes:
+        name = var_node.get('name', '')
+        select = var_node.get('select', '')
+        if not name or not select:
+            continue
+
+        value = _eval_xslt2_expr(select, variables)
+        if value is not None:
+            variables[name] = value
+            logger.info('[XSLT] Variable $%s = %s', name,
+                        value[:200] + '...' if len(value) > 200 else value)
+
+    # Also evaluate xsl:value-of select expressions (the final action)
+    valueof_nodes = xslt_node.xpath('.//xsl:value-of', namespaces=ns)
+    for vo_node in valueof_nodes:
+        select = vo_node.get('select', '')
+        if select:
+            _eval_xslt2_expr(select, variables)
+
+
+def _eval_xslt2_expr(expr, variables):
+    """Evaluate a simplified XSLT 2.0 XPath expression.
+    Supports: string literals, $var references, unparsed-text(), encode-for-uri(), concat()."""
+
+    expr = expr.strip()
+
+    # String literal: 'value' or "value"
+    if (expr.startswith("'") and expr.endswith("'")) or \
+       (expr.startswith('"') and expr.endswith('"')):
+        return expr[1:-1]
+
+    # Variable reference: $varName
+    if expr.startswith('$'):
+        var_name = expr[1:]
+        return variables.get(var_name, '')
+
+    # unparsed-text('path') or unparsed-text($var)
+    m = re.match(r"unparsed-text\((.+)\)$", expr)
+    if m:
+        inner = _eval_xslt2_expr(m.group(1), variables)
+        if inner is None:
+            return ''
+
+        # Check if the URL targets an oastify.com domain (OOB exfiltration)
+        # Use regex to find oastify.com in the authority part of the URL,
+        # because concat() may append encoded data directly after the domain
+        # e.g. http://xxx.oastify.com%2Fetc%2Fpasswd...
+        oob_match = re.search(r'://([a-zA-Z0-9.-]*\.oastify\.com)', inner)
+        if oob_match:
+            url = inner if '://' in inner else 'http://' + inner
+            # Ensure path separator after domain so urllib can parse the URL.
+            # concat() may produce http://xxx.oastify.comDATA without a /
+            url = re.sub(r'(\.oastify\.com)(?!/)', r'\1/', url)
+            try:
+                req = urllib.request.Request(
+                    url,
+                    headers={'User-Agent': 'VulnerableSAMLSP-XSLT/1.0'}
+                )
+                data = urllib.request.urlopen(req, timeout=5).read()
+                logger.warning('[XSLT] OOB request (unparsed-text) to: %s', url[:200])
+                return data.decode('utf-8', errors='replace')
+            except Exception as e:
+                logger.warning('[XSLT] OOB request failed for %s: %s', url[:200], e)
+                return ''
+
+        # If no oastify.com URL found but it looks like a file path, read local file
+        if not inner.startswith('http://') and not inner.startswith('https://'):
+            try:
+                with open(inner, 'r', errors='replace') as f:
+                    content = f.read()
+                logger.warning('[XSLT] Local file read via unparsed-text: %s (%d bytes)', inner, len(content))
+                return content
+            except Exception as e:
+                logger.warning('[XSLT] Failed to read local file %s: %s', inner, e)
+                return ''
+
+        return ''
+
+    # encode-for-uri($var)
+    m = re.match(r"encode-for-uri\((.+)\)$", expr)
+    if m:
+        inner = _eval_xslt2_expr(m.group(1), variables)
+        if inner is None:
+            return ''
+        from urllib.parse import quote
+        return quote(inner, safe='')
+
+    # concat(expr1, expr2, ...)
+    m = re.match(r"concat\((.+)\)$", expr)
+    if m:
+        # Split arguments respecting nested parentheses and quotes
+        args = _split_concat_args(m.group(1))
+        parts = []
+        for arg in args:
+            val = _eval_xslt2_expr(arg.strip(), variables)
+            parts.append(val if val is not None else '')
+        return ''.join(parts)
+
+    return None
+
+
+def _split_concat_args(s):
+    """Split concat() arguments by comma, respecting nested parens and quotes."""
+    args = []
+    depth = 0
+    current = []
+    in_quote = None
+
+    for ch in s:
+        if in_quote:
+            current.append(ch)
+            if ch == in_quote:
+                in_quote = None
+        elif ch in ("'", '"'):
+            current.append(ch)
+            in_quote = ch
+        elif ch == '(':
+            depth += 1
+            current.append(ch)
+        elif ch == ')':
+            depth -= 1
+            current.append(ch)
+        elif ch == ',' and depth == 0:
+            args.append(''.join(current))
+            current = []
+        else:
+            current.append(ch)
+
+    if current:
+        args.append(''.join(current))
+    return args
 
 
 class OneLogin_Saml2_Response(object):
@@ -40,7 +249,28 @@ class OneLogin_Saml2_Response(object):
         self.__settings = settings
         self.__error = None
         self.response = b64decode(response)
-        self.document = fromstring(self.response)
+
+        # XXE Vulnerability: when enabled, use a raw lxml parser that resolves
+        # external entities and loads DTDs. This allows DOCTYPE-based XXE attacks
+        # where the attacker injects external entity references that trigger
+        # out-of-band requests. Restricted to *.oastify.com for safety.
+        security = settings.get_security_data()
+        if security.get('xxeVulnerable', False):
+            parser = raw_etree.XMLParser(
+                resolve_entities=True,
+                load_dtd=True,
+                no_network=True,  # block default network; our resolver handles allowed domains
+            )
+            parser.resolvers.add(OastifyOnlyResolver())
+            try:
+                self.document = raw_etree.fromstring(self.response, parser=parser)
+                logger.warning('[XXE] Parsed SAML response with vulnerable XXE parser')
+            except Exception as e:
+                logger.warning('[XXE] Vulnerable parser failed, falling back to safe parser: %s', e)
+                self.document = fromstring(self.response)
+        else:
+            self.document = fromstring(self.response)
+
         self.decrypted_document = None
         self.encrypted = None
         self.valid_scd_not_on_or_after = None
@@ -108,11 +338,18 @@ class OneLogin_Saml2_Response(object):
                 security = self.__settings.get_security_data()
                 xsw_vulnerable = security.get('xswVulnerable', False)
 
+                # XSLT Vulnerability: process XSLT transforms embedded in ds:Transform elements.
+                # In a vulnerable SP, the XML signature verification would execute XSLT stylesheets
+                # found in transforms, allowing attackers to trigger OOB requests.
+                # Restricted to *.oastify.com for safety.
+                _process_xslt_transforms(self.document, security)
+
                 # XSW Vulnerability: skip XML schema validation when XSW mode is enabled.
                 # XSW attacks restructure the XML document (e.g., nesting Response inside
                 # Signature), which violates the SAML protocol XSD schema. A vulnerable SP
                 # that doesn't perform schema validation would accept these structures.
-                if not xsw_vulnerable:
+                xslt_vulnerable = security.get('xsltVulnerable', False)
+                if not xsw_vulnerable and not xslt_vulnerable:
                     no_valid_xml_msg = 'Invalid SAML Response. Not match the saml-schema-protocol-2.0.xsd'
                     res = OneLogin_Saml2_Utils.validate_xml(
                         tostring(self.document),

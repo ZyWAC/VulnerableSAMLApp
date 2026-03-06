@@ -65,14 +65,25 @@ Configurable via the **Settings** page (Instructor only) or `advanced_settings.j
 | `validMessage` | **Validate** Response signature cryptographically |
 | `validAssertion` | **Validate** Assertion signature cryptographically |
 | `signMetadata` | Sign SP metadata |
-| `xswVulnerable` | Enable XML Signature Wrapping (XSW) attacks — bypasses schema validation and signature verification |
 | `adminPanelEnabled` | Toggle Admin Panel access for admin users |
-|---------|-------------|
-|CVE Card|
-| `cve-2017-11427` | Enable vulnerable XML comment parsing (`.text` vs `itertext()`) |
-|More will be added|
 
+**Vulnerability Settings** (separate toggle card in Settings):
+
+| Setting | Description |
+|---------|-------------|
+| `xswVulnerable` | XML Signature Wrapping (XSW1–XSW8) — bypasses schema validation and signature verification |
+| `xxeVulnerable` | XML External Entity — parser resolves external entities, enabling OOB exfiltration |
+| `xsltVulnerable` | XSLT Injection — XSLT stylesheets in `<ds:Transform>` are executed, enabling local file read and OOB requests |
+> **OOB Restriction:** XXE and XSLT attacks only allow out-of-band requests to `*.oastify.com` (Burp Collaborator). XSLT also allows local file access (e.g. `/etc/passwd`). All other external requests are blocked.
+
+**CVE Settings** (separate toggle card in Settings):
+
+| Setting | Description |
+|---------|-------------|
+| `cve-2017-11427` | XML Comment Injection` |
 > **Key:** `wantMessagesSigned` / `wantAssertionsSigned` only check signature **presence**. Without `validMessage` / `validAssertion`, attackers can freely modify SAML content.
+
+
 
 ---
 
@@ -88,6 +99,18 @@ With the current configuration, the intended attack chain is:
 2. **XSW Attack** — Use XML Signature Wrapping to escalate your role from `users` to `staffs`
 3. **Create a Custom Group** — As a staff member, use the Staff Panel to create a group named `administratorsnot` and assign yourself to it
 4. **CVE-2017-11427** — Re-login, intercept the SAML Response, and inject an XML comment (`administrators<!---->not`) to escalate to `administrators`
+
+### XXE (XML External Entity)
+
+**Settings:** `xxeVulnerable` ✅
+
+Inject a DOCTYPE declaration with an external entity reference into the SAML Response. The vulnerable parser resolves the entity, triggering an out-of-band HTTP request to your Burp Collaborator (`*.oastify.com`).
+
+### XSLT Injection
+
+**Settings:** `xsltVulnerable` ✅
+
+Embed an XSLT stylesheet inside a `<ds:Transform>` element in the SAML Response signature. The vulnerable SP processes the transform during signature verification, allowing local file read (e.g. `unparsed-text('/etc/passwd')`) and triggering out-of-band requests to `*.oastify.com`.
 
 ---
 
