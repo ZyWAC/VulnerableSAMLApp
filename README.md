@@ -81,7 +81,8 @@ Configurable via the **Settings** page (Instructor only) or `advanced_settings.j
 
 | Setting | Description |
 |---------|-------------|
-| `cve-2017-11427` | XML Comment Injection` |
+| `cve-2017-11427` | XML Comment Injection |
+| `cve-2022-41912` | Multiple Assertion Signature Bypass — SP validates signature on first (signed) Assertion but reads data from last (unsigned) Assertion |
 > More will be added in future update
 
 

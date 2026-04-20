@@ -840,6 +840,13 @@ class OneLogin_Saml2_Response(object):
         if security.get('xswVulnerable', False):
             return True
 
+        # CVE-2022-41912: when enabled, allow multiple assertions
+        # The vulnerable SP accepts >1 Assertion elements in the Response.
+        # Signature is validated on the first (signed) one, but data is read
+        # from the last (unsigned, attacker-injected) one.
+        if security.get('cve-2022-41912', False):
+            return True
+
         encrypted_assertion_nodes = OneLogin_Saml2_Utils.query(self.document, '//saml:EncryptedAssertion')
         assertion_nodes = OneLogin_Saml2_Utils.query(self.document, '//saml:Assertion')
 
@@ -1046,6 +1053,22 @@ class OneLogin_Saml2_Response(object):
             else:
                 final_query = '/samlp:Response' + assertion_expr + xpath_expr
                 return self.__query(final_query)
+
+        # CVE-2022-41912: when enabled, read data from the LAST assertion
+        # The vulnerable SP validates signature on the first (signed) assertion,
+        # but extracts user attributes from the last assertion — which is the
+        # unsigned, attacker-injected one.
+        if security.get('cve-2022-41912', False):
+            all_assertions = self.__query('/samlp:Response/saml:Assertion')
+            if len(all_assertions) > 1:
+                # Use the LAST assertion (attacker-injected, unsigned)
+                evil_assertion = all_assertions[-1]
+                if self.encrypted:
+                    document = self.decrypted_document
+                else:
+                    document = self.document
+                return OneLogin_Saml2_Utils.query(document, '.' + xpath_expr, context=evil_assertion)
+            # Fall through to normal logic if only one assertion
 
         signed_assertion_query = '/samlp:Response' + assertion_expr + signature_expr
         assertion_reference_nodes = self.__query(signed_assertion_query)
