@@ -48,8 +48,8 @@ User accounts are defined in `vulnerableidp/authsources.php`. New users can also
 | Role | Access |
 |------|--------|
 | `users` | Profile, complaints, learn page |
-| `staffs` | + Staff Panel (HR group management) |
-| `administrators` | + Admin Panel (when enabled by instructor) |
+| `staffs` | Staff Panel (HR group management) |
+| `administrators` | Admin Panel (when enabled by instructor) |
 | `PlatformConfiguration` | Instructor — security settings, instruction mode |
 
 ---
