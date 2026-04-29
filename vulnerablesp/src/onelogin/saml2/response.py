@@ -268,6 +268,24 @@ class OneLogin_Saml2_Response(object):
             except Exception as e:
                 logger.warning('[XXE] Vulnerable parser failed, falling back to safe parser: %s', e)
                 self.document = fromstring(self.response)
+        elif security.get('cve-2025-23369', False):
+            # CVE-2025-23369: accept internal DTD subset with entity definitions.
+            # This allows attackers to define XML entities used in the Response ID
+            # attribute (e.g. ID="&entityDef;"), enabling the entity-based ID
+            # confusion attack against the SAML signature validator.
+            # resolve_entities=True expands them at parse time so downstream
+            # ID comparisons work, matching the libxml2 quirk's end-state.
+            parser = raw_etree.XMLParser(
+                load_dtd=True,
+                no_network=True,
+                resolve_entities=True,
+            )
+            try:
+                self.document = raw_etree.fromstring(self.response, parser=parser)
+                logger.warning('[CVE-2025-23369] Parsed SAML response with DTD entity support')
+            except Exception as e:
+                logger.warning('[CVE-2025-23369] DTD parser failed, falling back: %s', e)
+                self.document = fromstring(self.response)
         else:
             self.document = fromstring(self.response)
 
@@ -349,7 +367,8 @@ class OneLogin_Saml2_Response(object):
                 # Signature), which violates the SAML protocol XSD schema. A vulnerable SP
                 # that doesn't perform schema validation would accept these structures.
                 xslt_vulnerable = security.get('xsltVulnerable', False)
-                if not xsw_vulnerable and not xslt_vulnerable:
+                cve_202523369 = security.get('cve-2025-23369', False)
+                if not xsw_vulnerable and not xslt_vulnerable and not cve_202523369:
                     no_valid_xml_msg = 'Invalid SAML Response. Not match the saml-schema-protocol-2.0.xsd'
                     res = OneLogin_Saml2_Utils.validate_xml(
                         tostring(self.document),
@@ -544,13 +563,20 @@ class OneLogin_Saml2_Response(object):
             # If json config wants signature validation
             if security.get('wantValidMessageSignature', False):
                 xsw_vulnerable = security.get('xswVulnerable', False)
+                cve_2025_23369 = security.get('cve-2025-23369', False)
                 # XSW Vulnerability: skip cryptographic signature validation when XSW is enabled.
                 # The real XSW vulnerability is the "confused deputy" pattern:
                 #   1. SP validates the signature on the ORIGINAL signed element (passes)
                 #   2. SP then extracts data from a DIFFERENT (evil) element
                 # We simulate this by skipping cryptographic validation while keeping
                 # the presence check (wantMessagesSigned) active.
-                if not xsw_vulnerable:
+                #
+                # CVE-2025-23369: skip cryptographic Response signature validation.
+                # Due to libxml2's XPath hash optimization, the validator finds the
+                # attacker's injected (IDP-signed) Assertion inside ds:Object instead
+                # of the Response root, so the "Response signature" check passes
+                # against attacker-controlled content. We simulate this bypass.
+                if not xsw_vulnerable and not cve_2025_23369:
                     response_sig_xpath = OneLogin_Saml2_Utils.RESPONSE_SIGNATURE_XPATH
                     if has_signed_response and not OneLogin_Saml2_Utils.validate_sign(self.document, cert, fingerprint, fingerprintalg, xpath=response_sig_xpath, multicerts=multicerts, raise_exceptions=False):
                         raise OneLogin_Saml2_ValidationError(
@@ -560,7 +586,8 @@ class OneLogin_Saml2_Response(object):
             # If json config requests assertion validation
             if security.get('wantValidAssertionsSignature', False):
                 xsw_vulnerable = security.get('xswVulnerable', False)
-                if not xsw_vulnerable:
+                cve_2025_23369 = security.get('cve-2025-23369', False)
+                if not xsw_vulnerable and not cve_2025_23369:
                     document_check_assertion = self.decrypted_document if self.encrypted else self.document
                     assertion_sig_xpath = OneLogin_Saml2_Utils.ASSERTION_SIGNATURE_XPATH
                     if has_signed_assertion and not OneLogin_Saml2_Utils.validate_sign(document_check_assertion, cert, fingerprint, fingerprintalg, xpath=assertion_sig_xpath, multicerts=multicerts, raise_exceptions=False):
@@ -847,6 +874,13 @@ class OneLogin_Saml2_Response(object):
         if security.get('cve-2022-41912', False):
             return True
 
+        # CVE-2025-23369: allow multiple assertions.
+        # The attack places a real IDP-signed Assertion inside ds:Object and
+        # an unsigned forged Assertion in the Response body. Both appear in
+        # the document, so the count check must be skipped.
+        if security.get('cve-2025-23369', False):
+            return True
+
         encrypted_assertion_nodes = OneLogin_Saml2_Utils.query(self.document, '//saml:EncryptedAssertion')
         assertion_nodes = OneLogin_Saml2_Utils.query(self.document, '//saml:Assertion')
 
@@ -882,6 +916,29 @@ class OneLogin_Saml2_Response(object):
                     parent_tag = parent.tag
                     if (parent_tag == response_tag or parent_tag == assertion_tag) and parent_tag not in signed_elements:
                         signed_elements.append(parent_tag)
+            return signed_elements
+
+        if security.get('cve-2025-23369', False):
+            # CVE-2025-23369: XML entity ID confusion in libxml2/Nokogiri.
+            # When the Response ID is set via an XML entity (ID="&entityDef;"),
+            # libxml2's XPath hash optimization skips entity reference nodes.
+            # This causes the XPath query that looks up the signed element by ID
+            # to find an injected Assertion inside ds:Object (whose ID ends with
+            # the entity value text) instead of the Response root.
+            # Result: the Signature is verified against an attacker-controlled
+            # element in ds:Object, while attribute data is extracted from the
+            # unsigned body Assertion — enabling full authentication bypass.
+            # Simulate: accept the Response-level Signature without strict
+            # reference URI verification and report both signed response and
+            # signed assertion (the injected assertion inside ds:Object would
+            # be the one cryptographically verified by the confused validator).
+            response_tag = '{%s}Response' % OneLogin_Saml2_Constants.NS_SAMLP
+            assertion_tag = '{%s}Assertion' % OneLogin_Saml2_Constants.NS_SAML
+            signed_elements = []
+            response_sig_nodes = self.__query('/samlp:Response/ds:Signature')
+            if response_sig_nodes:
+                signed_elements.append(response_tag)
+                signed_elements.append(assertion_tag)
             return signed_elements
 
         sign_nodes = self.__query('//ds:Signature')
@@ -1069,6 +1126,23 @@ class OneLogin_Saml2_Response(object):
                     document = self.document
                 return OneLogin_Saml2_Utils.query(document, '.' + xpath_expr, context=evil_assertion)
             # Fall through to normal logic if only one assertion
+
+        # CVE-2025-23369: read data from the last DIRECT CHILD Assertion of Response.
+        # In this attack, the real IDP-signed Assertion is embedded inside
+        # ds:Signature/Object (not a direct child of Response), while the forged
+        # body Assertion (with attacker-controlled attributes) is a direct child.
+        # We use /samlp:Response/saml:Assertion (direct child axis) so the Object
+        # Assertion is never reached, and we target the last direct child Assertion.
+        # This also avoids entity-expanded attribute XPath matching issues in lxml.
+        if security.get('cve-2025-23369', False):
+            direct_assertions = self.__query('/samlp:Response/saml:Assertion')
+            if direct_assertions:
+                target_assertion = direct_assertions[-1]
+                if self.encrypted:
+                    document = self.decrypted_document
+                else:
+                    document = self.document
+                return OneLogin_Saml2_Utils.query(document, '.' + xpath_expr, context=target_assertion)
 
         signed_assertion_query = '/samlp:Response' + assertion_expr + signature_expr
         assertion_reference_nodes = self.__query(signed_assertion_query)

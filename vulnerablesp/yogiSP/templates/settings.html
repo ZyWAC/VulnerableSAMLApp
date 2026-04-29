@@ -25,7 +25,7 @@
         <tbody>
           {% if currentSettings %}
             {% for key, value in currentSettings.items() %}
-              {% if key not in ['cve-2017-11427', 'cve-2022-41912', 'xxeVulnerable', 'xsltVulnerable', 'xswVulnerable'] %}
+              {% if key not in ['cve-2017-11427', 'cve-2022-41912', 'cve-2025-23369', 'xxeVulnerable', 'xsltVulnerable', 'xswVulnerable'] %}
               <tr>
                 <td class="px-4">
                   <div class="d-flex align-items-center gap-2">
@@ -203,11 +203,29 @@
               <strong>CVE-2022-41912</strong>
               <span class="badge bg-warning text-dark ms-2">Multiple Assertion Bypass</span>
               <div class="text-muted mt-1" style="font-size: 0.8rem;">
-                When enabled, the SP accepts SAML Responses containing multiple Assertion elements. It validates the signature on the first (signed) Assertion but reads user data from the last (unsigned, attacker-injected) Assertion, allowing authentication bypass.
+                When enabled, attackers can append an unsigned Assertion to a valid SAML Response; the SP validates the first (signed) Assertion but reads user attributes from the last (attacker-controlled) Assertion, allowing privilege escalation.
               </div>
             </div>
             <div class="form-check form-switch ms-3" style="min-width: 50px;">
               <input class="form-check-input" type="checkbox" role="switch" id="cve-2022-41912" name="cve-2022-41912" {% if currentSettings and currentSettings['cve-2022-41912'] == 'True' %}checked{% endif %}>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CVE-2025-23369 -->
+      <div class="card mb-3">
+        <div class="card-body py-2 px-3">
+          <div class="d-flex align-items-start justify-content-between">
+            <div>
+              <strong>CVE-2025-23369</strong>
+              <span class="badge bg-warning text-dark ms-2">XML Entity ID Confusion</span>
+              <div class="text-muted mt-1" style="font-size: 0.8rem;">
+                When enabled, attackers can set the Response ID via a DTD entity and embed a real signed Assertion inside <code>ds:Object</code> alongside a forged body Assertion. libxml2's XPath hash optimization skips entity reference nodes, causing signature validation to verify the injected element instead of the Response root, allowing authentication bypass.
+              </div>
+            </div>
+            <div class="form-check form-switch ms-3" style="min-width: 50px;">
+              <input class="form-check-input" type="checkbox" role="switch" id="cve-2025-23369" name="cve-2025-23369" {% if currentSettings and currentSettings['cve-2025-23369'] == 'True' %}checked{% endif %}>
             </div>
           </div>
         </div>

@@ -317,8 +317,9 @@ def update():
                         xxeVulnerable = 'xxeVulnerable' in request.form
                         xsltVulnerable = 'xsltVulnerable' in request.form
                         cve202241912 = 'cve-2022-41912' in request.form
+                        cve202523369 = 'cve-2025-23369' in request.form
         
-                        jsonEditor(wantMessagesSigned,wantAssertionsSigned,signMetadata,validMessage,validAssertion,cve201711427,adminPanelEnabled,xswVulnerable,xxeVulnerable,xsltVulnerable,cve202241912)
+                        jsonEditor(wantMessagesSigned,wantAssertionsSigned,signMetadata,validMessage,validAssertion,cve201711427,adminPanelEnabled,xswVulnerable,xxeVulnerable,xsltVulnerable,cve202241912,cve202523369)
 
                         return redirect('/settings/')
     return redirect('/')
