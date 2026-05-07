@@ -76,6 +76,8 @@
                   <span class="badge-role badge-instructor">{{ user.memberOf }}</span>
                 {% elif user.memberOf == 'administrators' %}
                   <span class="badge-role badge-admin">{{ user.memberOf }}</span>
+                {% elif user.memberOf == 'staffs' or (user.memberOf in custom_groups and custom_groups[user.memberOf].permission_level == 'staffs') %}
+                  <span class="badge-role" style="background: var(--success-light); color: var(--success);">{{ user.memberOf }}</span>
                 {% else %}
                   <span class="badge-role badge-user">{{ user.memberOf }}</span>
                 {% endif %}
