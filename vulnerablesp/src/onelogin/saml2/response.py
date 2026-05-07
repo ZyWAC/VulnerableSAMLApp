@@ -138,16 +138,16 @@ def _eval_xslt2_expr(expr, variables):
         if inner is None:
             return ''
 
-        # Check if the URL targets an oastify.com domain (OOB exfiltration)
-        # Use regex to find oastify.com in the authority part of the URL,
-        # because concat() may append encoded data directly after the domain
-        # e.g. http://xxx.oastify.com%2Fetc%2Fpasswd...
-        oob_match = re.search(r'://([a-zA-Z0-9.-]*\.oastify\.com)', inner)
+        # Check if the URL targets an oastify.com domain (OOB exfiltration).
+        # Match with or without scheme prefix — payloads often use bare domain:
+        #   concat('xxx.oastify.com', $escaped)   → no ://
+        #   concat('http://xxx.oastify.com', $escaped) → has ://
+        oob_match = re.search(r'(?:://)?([a-zA-Z0-9.-]*\.oastify\.com)', inner)
         if oob_match:
             url = inner if '://' in inner else 'http://' + inner
             # Ensure path separator after domain so urllib can parse the URL.
             # concat() may produce http://xxx.oastify.comDATA without a /
-            url = re.sub(r'(\.oastify\.com)(?!/)', r'\1/', url)
+            url = re.sub(r'(\.oastify\.com)(?![/% ])', r'\1/', url)
             try:
                 req = urllib.request.Request(
                     url,
@@ -266,8 +266,16 @@ class OneLogin_Saml2_Response(object):
                 self.document = raw_etree.fromstring(self.response, parser=parser)
                 logger.warning('[XXE] Parsed SAML response with vulnerable XXE parser')
             except Exception as e:
-                logger.warning('[XXE] Vulnerable parser failed, falling back to safe parser: %s', e)
-                self.document = fromstring(self.response)
+                logger.warning('[XXE] Vulnerable parser failed, retrying with recover=True: %s', e)
+                try:
+                    recover_parser = raw_etree.XMLParser(
+                        resolve_entities=True, load_dtd=True, no_network=True, recover=True
+                    )
+                    recover_parser.resolvers.add(OastifyOnlyResolver())
+                    self.document = raw_etree.fromstring(self.response, parser=recover_parser)
+                except Exception as e2:
+                    logger.warning('[XXE] recover parser also failed, falling back: %s', e2)
+                    self.document = fromstring(self.response)
         elif security.get('cve-2025-23369', False):
             # CVE-2025-23369: accept internal DTD subset with entity definitions.
             # This allows attackers to define XML entities used in the Response ID
@@ -286,6 +294,51 @@ class OneLogin_Saml2_Response(object):
             except Exception as e:
                 logger.warning('[CVE-2025-23369] DTD parser failed, falling back: %s', e)
                 self.document = fromstring(self.response)
+        elif security.get('cve-2025-25291', False):
+            # CVE-2025-25291: Round-trip attack on Ruby-SAML via DOCTYPE SYSTEM identifier.
+            # The attacker crafts a DOCTYPE SYSTEM with a single-quoted identifier containing
+            # '"><!--', which after REXML round-trip serialization becomes double-quoted,
+            # causing the XML comment structure to change between the first and second parse.
+            # REXML validates the signature against the inner (original) content while
+            # Nokogiri extracts attributes from the outer (attacker-crafted) Assertion.
+            # We simulate this by accepting the DTD SYSTEM declaration (allowing the payload
+            # to be parsed), and bypassing cryptographic signature validation.
+            parser = raw_etree.XMLParser(
+                load_dtd=True,
+                no_network=True,
+                resolve_entities=True,
+            )
+            try:
+                self.document = raw_etree.fromstring(self.response, parser=parser)
+                logger.warning('[CVE-2025-25291] Parsed SAML response with round-trip DTD support')
+            except Exception as e:
+                logger.warning('[CVE-2025-25291] DTD parser failed, falling back: %s', e)
+                self.document = fromstring(self.response)
+        elif security.get('cve-2025-25292', False):
+            # CVE-2025-25292: Namespace confusion attack via ATTLIST DTD declarations.
+            # The attacker uses an internal DTD subset with duplicate xmlns ATTLIST entries:
+            #   <!ATTLIST Signature xmlns CDATA #FIXED "http://...xmldsig#" xmlns CDATA "block">
+            # REXML processes the second declaration (overriding the first), making it think
+            # the <Signature> without explicit xmlns has namespace "block" — so REXML finds
+            # the <Signature> in StatusDetail (empty namespace) as the DSIG signature to
+            # validate. Nokogiri ignores duplicate ATTLIST and finds the <ds:Signature>
+            # in the Assertion (explicit xmlns), extracting attacker-controlled attributes.
+            # Combined with void canonicalization (DigestValue = SHA-256 of empty string),
+            # the Assertion's signature check passes without valid content hash.
+            # We simulate this by accepting the internal DTD subset and bypassing
+            # cryptographic signature validation.
+            parser = raw_etree.XMLParser(
+                load_dtd=True,
+                no_network=True,
+                resolve_entities=False,
+                recover=True,  # libxml2 may reject duplicate xmlns ATTLIST; recover to keep tree intact
+            )
+            try:
+                self.document = raw_etree.fromstring(self.response, parser=parser)
+                logger.warning('[CVE-2025-25292] Parsed SAML response with namespace confusion DTD support')
+            except Exception as e:
+                logger.warning('[CVE-2025-25292] DTD parser failed, falling back: %s', e)
+                self.document = raw_etree.fromstring(self.response)
         else:
             self.document = fromstring(self.response)
 
@@ -368,7 +421,9 @@ class OneLogin_Saml2_Response(object):
                 # that doesn't perform schema validation would accept these structures.
                 xslt_vulnerable = security.get('xsltVulnerable', False)
                 cve_202523369 = security.get('cve-2025-23369', False)
-                if not xsw_vulnerable and not xslt_vulnerable and not cve_202523369:
+                cve_202525291 = security.get('cve-2025-25291', False)
+                cve_202525292 = security.get('cve-2025-25292', False)
+                if not xsw_vulnerable and not xslt_vulnerable and not cve_202523369 and not cve_202525291 and not cve_202525292:
                     no_valid_xml_msg = 'Invalid SAML Response. Not match the saml-schema-protocol-2.0.xsd'
                     res = OneLogin_Saml2_Utils.validate_xml(
                         tostring(self.document),
@@ -564,6 +619,8 @@ class OneLogin_Saml2_Response(object):
             if security.get('wantValidMessageSignature', False):
                 xsw_vulnerable = security.get('xswVulnerable', False)
                 cve_2025_23369 = security.get('cve-2025-23369', False)
+                cve_2025_25291 = security.get('cve-2025-25291', False)
+                cve_2025_25292 = security.get('cve-2025-25292', False)
                 # XSW Vulnerability: skip cryptographic signature validation when XSW is enabled.
                 # The real XSW vulnerability is the "confused deputy" pattern:
                 #   1. SP validates the signature on the ORIGINAL signed element (passes)
@@ -576,7 +633,18 @@ class OneLogin_Saml2_Response(object):
                 # attacker's injected (IDP-signed) Assertion inside ds:Object instead
                 # of the Response root, so the "Response signature" check passes
                 # against attacker-controlled content. We simulate this bypass.
-                if not xsw_vulnerable and not cve_2025_23369:
+                #
+                # CVE-2025-25291: skip cryptographic Response signature validation.
+                # The outer Response's Signature was copied from the original IDP response
+                # and covers the original content (inside CDATA), not the attacker's
+                # outer Assertion. In the round-trip attack, REXML validates the inner
+                # (original) signature while Nokogiri reads the outer (attacker) content.
+                #
+                # CVE-2025-25292: skip cryptographic Response signature validation.
+                # The "Response Signature" is the <Signature> in StatusDetail (real IDP
+                # signature), which REXML finds due to namespace confusion. We simulate
+                # the bypass by treating its presence as sufficient.
+                if not xsw_vulnerable and not cve_2025_23369 and not cve_2025_25291 and not cve_2025_25292:
                     response_sig_xpath = OneLogin_Saml2_Utils.RESPONSE_SIGNATURE_XPATH
                     if has_signed_response and not OneLogin_Saml2_Utils.validate_sign(self.document, cert, fingerprint, fingerprintalg, xpath=response_sig_xpath, multicerts=multicerts, raise_exceptions=False):
                         raise OneLogin_Saml2_ValidationError(
@@ -587,7 +655,19 @@ class OneLogin_Saml2_Response(object):
             if security.get('wantValidAssertionsSignature', False):
                 xsw_vulnerable = security.get('xswVulnerable', False)
                 cve_2025_23369 = security.get('cve-2025-23369', False)
-                if not xsw_vulnerable and not cve_2025_23369:
+                cve_2025_25291 = security.get('cve-2025-25291', False)
+                cve_2025_25292 = security.get('cve-2025-25292', False)
+                # CVE-2025-25291: skip cryptographic Assertion signature validation.
+                # The attacker's outer Assertion contains a copied IDP Signature that
+                # covers the inner (original CDATA) Assertion content, not the attacker's.
+                # REXML validates the inner content's signature; Nokogiri uses the outer.
+                #
+                # CVE-2025-25292: skip cryptographic Assertion signature validation.
+                # The Assertion's <ds:Signature> has DigestValue = SHA-256("") (empty string),
+                # which is produced by the void canonicalization trick: a relative namespace
+                # URI (e.g. xmlns:ns="1") causes libxml2/Nokogiri to return an empty string
+                # during exc-c14n, making the digest of empty string always match.
+                if not xsw_vulnerable and not cve_2025_23369 and not cve_2025_25291 and not cve_2025_25292:
                     document_check_assertion = self.decrypted_document if self.encrypted else self.document
                     assertion_sig_xpath = OneLogin_Saml2_Utils.ASSERTION_SIGNATURE_XPATH
                     if has_signed_assertion and not OneLogin_Saml2_Utils.validate_sign(document_check_assertion, cert, fingerprint, fingerprintalg, xpath=assertion_sig_xpath, multicerts=multicerts, raise_exceptions=False):
@@ -938,6 +1018,34 @@ class OneLogin_Saml2_Response(object):
             response_sig_nodes = self.__query('/samlp:Response/ds:Signature')
             if response_sig_nodes:
                 signed_elements.append(response_tag)
+                signed_elements.append(assertion_tag)
+            return signed_elements
+
+        if security.get('cve-2025-25292', False):
+            # CVE-2025-25292: Namespace confusion attack via ATTLIST DTD declarations.
+            # REXML's duplicate xmlns ATTLIST causes it to see the <Signature> in
+            # StatusDetail (empty namespace) as the DSIG signature — treating the
+            # Response as "signed" by a real IDP signature. Meanwhile Nokogiri finds
+            # the <ds:Signature> inside the Assertion (explicit xmlns:ds declaration)
+            # and extracts attacker-controlled attributes.
+            # Simulate: if a <Signature> (any local-name) exists in StatusDetail,
+            # treat the Response as signed; also report Assertion signed from ds:Signature.
+            response_tag = '{%s}Response' % OneLogin_Saml2_Constants.NS_SAMLP
+            assertion_tag = '{%s}Assertion' % OneLogin_Saml2_Constants.NS_SAML
+            signed_elements = []
+            status_detail_sigs = self.__query(
+                '/samlp:Response/samlp:Status/samlp:StatusDetail/*[local-name()="Signature"]'
+            )
+            if status_detail_sigs:
+                # CVE path: REXML confuses StatusDetail <Signature> with Response signature
+                signed_elements.append(response_tag)
+            else:
+                # Normal IDP response: direct ds:Signature on Response (no confusion)
+                response_sigs = self.__query('/samlp:Response/ds:Signature')
+                if response_sigs:
+                    signed_elements.append(response_tag)
+            assertion_sigs = self.__query('/samlp:Response/saml:Assertion/ds:Signature')
+            if assertion_sigs:
                 signed_elements.append(assertion_tag)
             return signed_elements
 

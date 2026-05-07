@@ -8,7 +8,7 @@ import time
 
 #### Update the settings stored in the settings file.
 #### This is the file that controls the security levels for the application
-def jsonEditor(wantMessagesSigned,wantAssertionsSigned,signMetadata,validMessage,validAssertion,cve201711427,adminPanelEnabled=False,xswVulnerable=False,xxeVulnerable=False,xsltVulnerable=False,cve202241912=False,cve202523369=False):
+def jsonEditor(wantMessagesSigned,wantAssertionsSigned,signMetadata,validMessage,validAssertion,cve201711427,adminPanelEnabled=False,xswVulnerable=False,xxeVulnerable=False,xsltVulnerable=False,cve202241912=False,cve202523369=False,cve202525291=False,cve202525292=False):
 
     filename = 'saml/advanced_settings.json'
     with open(filename) as data_file:
@@ -29,6 +29,8 @@ def jsonEditor(wantMessagesSigned,wantAssertionsSigned,signMetadata,validMessage
         data_loaded['security']['xsltVulnerable'] = xsltVulnerable
         data_loaded['security']['cve-2022-41912'] = cve202241912
         data_loaded['security']['cve-2025-23369'] = cve202523369
+        data_loaded['security']['cve-2025-25291'] = cve202525291
+        data_loaded['security']['cve-2025-25292'] = cve202525292
         print(data_loaded['security']['wantMessagesSigned'])
     data_file.close()
 
@@ -61,7 +63,9 @@ def jsonReader():
     xsltVulnerable = data_loaded['security'].get('xsltVulnerable', False)
     cve202241912 = data_loaded['security'].get('cve-2022-41912', False)
     cve202523369 = data_loaded['security'].get('cve-2025-23369', False)
-    settingValues = {'wantMessagesSigned':str(wantMessagesSigned),'wantAssertionsSigned':str(wantAssertionsSigned),'signMetadata':str(signMetadata),'validMessage':str(validMessage),'validAssertion':str(validAssertion),'cve-2017-11427':str(cve201711427),'adminPanelEnabled':str(adminPanelEnabled),'xswVulnerable':str(xswVulnerable),'xxeVulnerable':str(xxeVulnerable),'xsltVulnerable':str(xsltVulnerable),'cve-2022-41912':str(cve202241912),'cve-2025-23369':str(cve202523369)}
+    cve202525291 = data_loaded['security'].get('cve-2025-25291', False)
+    cve202525292 = data_loaded['security'].get('cve-2025-25292', False)
+    settingValues = {'wantMessagesSigned':str(wantMessagesSigned),'wantAssertionsSigned':str(wantAssertionsSigned),'signMetadata':str(signMetadata),'validMessage':str(validMessage),'validAssertion':str(validAssertion),'cve-2017-11427':str(cve201711427),'adminPanelEnabled':str(adminPanelEnabled),'xswVulnerable':str(xswVulnerable),'xxeVulnerable':str(xxeVulnerable),'xsltVulnerable':str(xsltVulnerable),'cve-2022-41912':str(cve202241912),'cve-2025-23369':str(cve202523369),'cve-2025-25291':str(cve202525291),'cve-2025-25292':str(cve202525292)}
     return settingValues
 
 #### ---- Everything below this is responsible for the Admin Panel / User Management ---- ####

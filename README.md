@@ -84,6 +84,8 @@ Configurable via the **Settings** page (Instructor only) or `advanced_settings.j
 | `cve-2017-11427` | XML Comment Injection |
 | `cve-2022-41912` | Multiple Assertion Signature Bypass — SP validates signature on first (signed) Assertion but reads data from last (unsigned) Assertion |
 | `cve-2025-23369` | XML Entity ID Confusion — SP accepts DTD entity definitions; libxml2's XPath hash optimization skips entity ref nodes, causing signature validation to verify an injected Assertion in `ds:Object` instead of the Response root |
+| `cve-2025-25291` | SAML Round-trip Attack — `DOCTYPE SYSTEM` single-quoted identifier shifts XML comment boundaries after REXML re-serializes (single→double quotes), causing REXML to verify original CDATA-wrapped signed content while Nokogiri reads attacker-controlled Assertion attributes |
+| `cve-2025-25292` | SAML Namespace Confusion — duplicate `xmlns` ATTLIST in DTD causes REXML to validate real `<Signature>` in `StatusDetail` while Nokogiri reads forged Assertion; void canonicalization (relative namespace URI → libxml2 returns empty string → DigestValue = SHA-256("") always passes) completes the bypass |
 > More will be added in future update
 
 
