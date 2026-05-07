@@ -471,9 +471,11 @@ def adminPanel():
     else:
         visible_users = users
 
+    custom_groups = jsonGroupsReader()
+
     return render_template('admin.html', paint_logout=paint_logout,
                            attributes=attributes, users=visible_users, role=role,
-                           admin_restricted=False)
+                           admin_restricted=False, custom_groups=custom_groups)
 
 
 @app.route('/admin/add', methods=['POST'])
@@ -545,8 +547,11 @@ def adminEditUserPage(username):
         if len(session['samlUserdata']) > 0:
             attributes = session['samlUserdata'].items()
 
+    custom_groups = jsonGroupsReader()
+
     return render_template('admin_edit.html', paint_logout=paint_logout,
-                           attributes=attributes, user=user, role=role)
+                           attributes=attributes, user=user, role=role,
+                           custom_groups=custom_groups)
 
 
 @app.route('/admin/edit/<username>', methods=['POST'])
@@ -663,7 +668,7 @@ def staffPanel():
     attributes = False
 
     role = get_user_role()
-    if role not in ('instructor', 'staffs'):
+    if role not in ('instructor', 'admin', 'staffs'):
         return redirect('/')
 
     if 'samlUserdata' in session:
@@ -689,7 +694,7 @@ def staffPanel():
 @app.route('/staff/groups/add', methods=['POST'])
 def staffAddGroup():
     role = get_user_role()
-    if role not in ('instructor', 'staffs'):
+    if role not in ('instructor', 'admin', 'staffs'):
         return redirect('/')
 
     group_name = request.form.get('group_name', '').strip()
@@ -713,7 +718,7 @@ def staffAddGroup():
 @app.route('/staff/groups/delete/<group_name>', methods=['POST'])
 def staffDeleteGroup(group_name):
     role = get_user_role()
-    if role not in ('instructor', 'staffs'):
+    if role not in ('instructor', 'admin', 'staffs'):
         return redirect('/')
 
     # Move any users in this group back to 'users'
@@ -736,7 +741,7 @@ def staffDeleteGroup(group_name):
 @app.route('/staff/user/<username>/group', methods=['POST'])
 def staffUpdateUserGroup(username):
     role = get_user_role()
-    if role not in ('instructor', 'staffs'):
+    if role not in ('instructor', 'admin', 'staffs'):
         return redirect('/')
 
     new_group = request.form.get('group', '').strip()

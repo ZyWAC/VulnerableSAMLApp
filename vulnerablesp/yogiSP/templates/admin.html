@@ -129,6 +129,10 @@
             <label for="memberOf" class="form-label text-muted">Group (memberOf)</label>
             <select class="form-select" id="memberOf" name="memberOf">
               <option value="users">users</option>
+              <option value="staffs">staffs</option>
+              {% for g in custom_groups %}
+              <option value="{{ g }}">{{ g }}</option>
+              {% endfor %}
               <option value="administrators">administrators</option>
               {% if role == 'instructor' %}
               <option value="PlatformConfiguration">PlatformConfiguration</option>

@@ -42,6 +42,10 @@
           <label for="memberOf" class="form-label text-muted">Group (memberOf)</label>
           <select class="form-select" id="memberOf" name="memberOf">
             <option value="users" {% if user.memberOf == 'users' %}selected{% endif %}>users</option>
+            <option value="staffs" {% if user.memberOf == 'staffs' %}selected{% endif %}>staffs</option>
+            {% for g in custom_groups %}
+            <option value="{{ g }}" {% if user.memberOf == g %}selected{% endif %}>{{ g }}</option>
+            {% endfor %}
             <option value="administrators" {% if user.memberOf == 'administrators' %}selected{% endif %}>administrators</option>
             {% if role == 'instructor' %}
             <option value="PlatformConfiguration" {% if user.memberOf == 'PlatformConfiguration' %}selected{% endif %}>PlatformConfiguration</option>
